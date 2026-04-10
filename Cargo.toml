@@ -1,0 +1,19 @@
+[workspace]
+members = ["anyllm"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT"
+repository = "https://github.com/sagikazarmark/anyllm"
+homepage = "https://github.com/sagikazarmark/anyllm"
+keywords = ["llm", "chat", "streaming"]
+categories = ["artificial-intelligence"]
+
+[workspace.metadata.release]
+sign-commit = true
+sign-tag = true
+tag-message = "Release {{version}}"
+tag-prefix = ""

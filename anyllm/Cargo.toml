@@ -1,0 +1,85 @@
+[package]
+name = "anyllm"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "Low-level, generic LLM provider abstraction for Rust"
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = ["llm", "chat", "streaming", "openai", "gemini", "anthropic"]
+categories = { workspace = true }
+
+[dependencies]
+futures-timer = "3"
+futures-core = "0.3"
+futures-util = "0.3"
+erased-serde = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["raw_value"] }
+schemars = { version = "0.8", optional = true }
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tracing-subscriber = "0.3"
+
+[features]
+extract = ["dep:schemars"]
+mock = []
+tracing = ["dep:tracing"]
+
+[[example]]
+name = "dyn_provider"
+
+[[example]]
+name = "provider_impl"
+
+[[example]]
+name = "chat"
+required-features = ["mock"]
+
+[[example]]
+name = "stream"
+required-features = ["mock"]
+
+[[example]]
+name = "tool_calling"
+required-features = ["mock"]
+
+[[example]]
+name = "retry"
+required-features = ["mock"]
+
+[[example]]
+name = "fallback"
+required-features = ["mock"]
+
+[[example]]
+name = "records"
+required-features = ["mock"]
+
+[[example]]
+name = "extract"
+required-features = ["mock", "extract"]
+
+[[example]]
+name = "validation"
+required-features = ["mock"]
+
+[[example]]
+name = "tracing"
+required-features = ["mock", "tracing"]
+
+[[example]]
+name = "extractor"
+required-features = ["mock", "extract"]
+
+[[bench]]
+name = "stream_collect"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = true
