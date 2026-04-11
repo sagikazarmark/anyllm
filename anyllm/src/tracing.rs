@@ -113,7 +113,7 @@ pub fn otel_genai_provider_name(provider_name: &str) -> &str {
     match provider_name {
         "gemini" => "gcp.gemini",
         "alt_openai_compat" => "openai",
-        "cloudflare_worker" => "cloudflare",
+        "cloudflare-worker" | "cloudflare_worker" => "cloudflare",
         other => other,
     }
 }
