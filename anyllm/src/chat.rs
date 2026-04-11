@@ -108,6 +108,30 @@ pub enum ChatCapability {
     ReasoningConfig,
 }
 
+/// Optional resolver used to customize a provider's chat capability answers.
+///
+/// Return `None` to defer to the provider's built-in answer. Return
+/// `Some(...)` to override it, including `Some(CapabilitySupport::Unknown)`.
+pub trait ChatCapabilityResolver: Send + Sync + 'static {
+    /// Return an override for the queried capability, or `None` to defer to
+    /// the provider's built-in capability logic.
+    fn chat_capability(&self, model: &str, capability: ChatCapability)
+    -> Option<CapabilitySupport>;
+}
+
+impl<F> ChatCapabilityResolver for F
+where
+    F: for<'a> Fn(&'a str, ChatCapability) -> Option<CapabilitySupport> + Send + Sync + 'static,
+{
+    fn chat_capability(
+        &self,
+        model: &str,
+        capability: ChatCapability,
+    ) -> Option<CapabilitySupport> {
+        self(model, capability)
+    }
+}
+
 impl<T> ChatProvider for &T
 where
     T: ChatProvider + ?Sized,
@@ -686,5 +710,25 @@ mod tests {
         let debug = format!("{model:?}");
         assert!(debug.contains("DynChatProvider"));
         assert!(debug.contains("debug-mock"));
+    }
+
+    #[test]
+    fn closure_chat_capability_resolver_returns_custom_answer() {
+        let resolver = |model: &str, capability| {
+            if model == "demo" && capability == ChatCapability::StructuredOutput {
+                Some(CapabilitySupport::Unknown)
+            } else {
+                None
+            }
+        };
+
+        assert_eq!(
+            resolver.chat_capability("demo", ChatCapability::StructuredOutput),
+            Some(CapabilitySupport::Unknown)
+        );
+        assert_eq!(
+            resolver.chat_capability("demo", ChatCapability::ToolCalls),
+            None
+        );
     }
 }

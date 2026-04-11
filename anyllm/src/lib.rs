@@ -57,7 +57,10 @@ mod tracing;
 #[cfg(feature = "tracing")]
 pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
 
-pub use chat::{CapabilitySupport, ChatCapability, ChatProvider, ChatProviderExt, DynChatProvider};
+pub use chat::{
+    CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
+    DynChatProvider,
+};
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use error::{Error, ErrorLog, Result, SerializationError};
 #[cfg(feature = "extract")]
@@ -100,12 +103,13 @@ pub mod prelude {
     pub use futures_util::StreamExt;
 
     pub use crate::{
-        CapabilitySupport, ChatCapability, ChatProvider, ChatProviderExt, ChatRequest,
-        ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart, DynChatProvider, Error,
-        ErrorLog, ExtraMap, FallbackChatProvider, FinishReason, ImageSource, Message,
-        OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
-        RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
-        Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
+        CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
+        ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
+        DynChatProvider, Error, ErrorLog, ExtraMap, FallbackChatProvider, FinishReason,
+        ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
+        Result, RetryPolicy, RetryingChatProvider, SingleResponseStream, StreamBlockType,
+        StreamCollector, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage,
+        UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]
