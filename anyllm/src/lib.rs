@@ -51,7 +51,6 @@ mod stream;
 mod tool;
 mod usage;
 mod utils;
-mod validation;
 
 #[cfg(feature = "tracing")]
 mod tracing;
@@ -88,7 +87,6 @@ pub use stream::{
 };
 pub use tool::{Tool, ToolChoice};
 pub use usage::Usage;
-pub use validation::{ValidatingChatProvider, ValidationMode};
 
 /// Portable JSON object used for provider-specific escape hatches.
 /// Uses `Map<String, Value>` instead of `Value` to enforce object semantics at compile time.
@@ -108,7 +106,6 @@ pub mod prelude {
         OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
         RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
         Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
-        ValidatingChatProvider, ValidationMode,
     };
 
     #[cfg(any(test, feature = "mock"))]

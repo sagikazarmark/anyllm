@@ -49,9 +49,7 @@ async fn main() -> anyllm::Result<()> {
         .system("You are concise.")
         .user("Say hello");
 
-    let provider: DynChatProvider = DynChatProvider::new(
-        ValidatingChatProvider::new(StaticProvider).with_mode(ValidationMode::Strict),
-    );
+    let provider: DynChatProvider = DynChatProvider::new(StaticProvider);
 
     run(&provider, &request).await
 }
