@@ -1,7 +1,10 @@
+use std::hint::black_box;
+
+use criterion::{Criterion, criterion_group, criterion_main};
+
 use anyllm::{
     ExtraMap, FinishReason, StreamBlockType, StreamCollector, StreamEvent, Usage, UsageMetadataMode,
 };
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 fn sample_events() -> Vec<StreamEvent> {
     let mut events = vec![StreamEvent::ResponseStart {
