@@ -1,0 +1,45 @@
+[
+  {
+    "event": "response_start",
+    "id": "chatcmpl-openai-stream-1",
+    "model": "gpt-4o"
+  },
+  {
+    "event": "block_start",
+    "index": 0,
+    "block_type": "text"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": "Hello"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": " world"
+  },
+  {
+    "event": "block_stop",
+    "index": 0
+  },
+  {
+    "event": "response_metadata",
+    "finish_reason": "stop",
+    "id": "chatcmpl-openai-stream-1",
+    "model": "gpt-4o"
+  },
+  {
+    "event": "response_metadata",
+    "usage": {
+      "input_tokens": 10,
+      "output_tokens": 5,
+      "total_tokens": 15
+    },
+    "id": "chatcmpl-openai-stream-1",
+    "model": "gpt-4o"
+  },
+  {
+    "event": "response_stop"
+  }
+]

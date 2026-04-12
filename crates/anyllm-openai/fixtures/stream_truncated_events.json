@@ -1,0 +1,43 @@
+[
+  {
+    "event": "response_start",
+    "id": "chatcmpl-openai-stream-trunc-1",
+    "model": "gpt-4o"
+  },
+  {
+    "event": "block_start",
+    "index": 0,
+    "block_type": "text"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": "Partial answer"
+  },
+  {
+    "event": "block_stop",
+    "index": 0
+  },
+  {
+    "event": "block_start",
+    "index": 1,
+    "block_type": "tool_call",
+    "id": "call_trunc_1",
+    "name": "search"
+  },
+  {
+    "event": "tool_call_delta",
+    "index": 1,
+    "arguments": "{\"q\":\"rust"
+  },
+  {
+    "event": "block_stop",
+    "index": 1
+  },
+  {
+    "error": {
+      "type": "stream",
+      "message": "SSE stream ended before [DONE]"
+    }
+  }
+]

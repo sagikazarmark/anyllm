@@ -1,0 +1,10 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Partial answer"
+    }
+  ],
+  "model": "gpt-4o",
+  "id": "chatcmpl-openai-stream-trunc-1"
+}

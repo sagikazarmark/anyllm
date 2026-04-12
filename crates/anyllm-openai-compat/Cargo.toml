@@ -1,0 +1,35 @@
+[package]
+name = "anyllm-openai-compat"
+description = "Reusable OpenAI-compatible transport and normalization toolkit for anyllm providers"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+anyllm = { workspace = true }
+eventsource-stream = "0.2"
+futures = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["json", "stream", "rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+anyllm-conformance = { workspace = true }
+tokio = { version = "1", features = ["full", "test-util"] }
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[features]
+default = []
+extract = ["anyllm/extract"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[[bench]]
+name = "normalization"
+harness = false

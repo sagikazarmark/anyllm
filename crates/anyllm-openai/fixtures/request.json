@@ -1,0 +1,76 @@
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a precise assistant."
+    },
+    {
+      "role": "user",
+      "content": "Find rust docs"
+    }
+  ],
+  "temperature": 0.699999988079071,
+  "top_p": 0.8999999761581421,
+  "max_tokens": 256,
+  "stop": [
+    "END"
+  ],
+  "frequency_penalty": 0.10000000149011612,
+  "presence_penalty": 0.20000000298023224,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "search",
+        "description": "Search docs",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "q"
+          ]
+        },
+        "strict": true
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "function",
+    "function": {
+      "name": "search"
+    }
+  },
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "answer",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer"
+        ]
+      },
+      "strict": true
+    }
+  },
+  "seed": 99,
+  "reasoning_effort": "high",
+  "parallel_tool_calls": true,
+  "user": "user_123",
+  "service_tier": "flex",
+  "store": true,
+  "metadata": {
+    "trace_id": "trace-123"
+  },
+  "stream": false
+}

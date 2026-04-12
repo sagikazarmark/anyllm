@@ -14,6 +14,7 @@ categories = ["artificial-intelligence"]
 
 [workspace.dependencies]
 anyllm = { version = "0.0.1", path = "crates/anyllm" }
+anyllm-conformance = { version = "0.0.1", path = "crates/anyllm-conformance" }
 
 [workspace.metadata.release]
 sign-commit = true

@@ -1,0 +1,29 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "I found the docs."
+    },
+    {
+      "type": "tool_call",
+      "id": "call_1",
+      "name": "search",
+      "arguments": "{\"q\":\"rust docs\"}"
+    }
+  ],
+  "finish_reason": "tool_calls",
+  "usage": {
+    "cached_input_tokens": 3,
+    "input_tokens": 10,
+    "output_tokens": 5,
+    "reasoning_tokens": 2,
+    "total_tokens": 15
+  },
+  "model": "gpt-4o",
+  "id": "chatcmpl-openai-1",
+  "metadata": {
+    "openai": {
+      "system_fingerprint": "fp_123"
+    }
+  }
+}

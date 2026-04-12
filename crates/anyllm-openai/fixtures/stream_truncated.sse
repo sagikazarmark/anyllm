@@ -1,0 +1,7 @@
+data: {"id":"chatcmpl-openai-stream-trunc-1","object":"chat.completion.chunk","created":1700000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-openai-stream-trunc-1","object":"chat.completion.chunk","created":1700000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"content":"Partial answer"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-openai-stream-trunc-1","object":"chat.completion.chunk","created":1700000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_trunc_1","type":"function","function":{"name":"search","arguments":""}}]},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-openai-stream-trunc-1","object":"chat.completion.chunk","created":1700000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"q\":\"rust"}}]},"finish_reason":null}]}

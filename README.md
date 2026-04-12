@@ -36,6 +36,8 @@ orchestration runtime.
 | --- | --- | --- |
 | [`anyllm`](crates/anyllm) | Core abstraction | Shared request/response types, streaming, tools, and wrappers |
 | [`anyllm-conformance`](crates/anyllm-conformance) | Test support | Fixture-based conformance helpers and a local mock HTTP server for provider crates |
+| [`anyllm-openai`](crates/anyllm-openai) | Provider adapter | OpenAI chat provider built on the shared `anyllm` surface |
+| [`anyllm-openai-compat`](crates/anyllm-openai-compat) | Provider toolkit | Reusable transport and normalization helpers for OpenAI-compatible providers |
 
 ## Example
 
@@ -79,7 +81,7 @@ cargo run -p anyllm --example chat --features mock
 
 | Provider | Crate | Status | Notes |
 | --- | --- | --- | --- |
-| TBD | `-` | `-` | Provider list will be filled in later |
+| OpenAI | [`anyllm-openai`](crates/anyllm-openai) | Available | OpenAI chat adapter with streaming, tools, and structured-output support hooks |
 
 ## License
 

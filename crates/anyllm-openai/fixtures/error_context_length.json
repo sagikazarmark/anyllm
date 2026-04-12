@@ -1,0 +1,4 @@
+{
+  "type": "context_length_exceeded",
+  "message": "This model's maximum context length is 128000 tokens"
+}
