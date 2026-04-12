@@ -30,6 +30,13 @@ orchestration runtime.
 - implement a provider: [`crates/anyllm/examples/provider_impl.rs`](crates/anyllm/examples/provider_impl.rs)
 - explore the API: [`docs.rs/anyllm`](https://docs.rs/anyllm)
 
+## Workspace Crates
+
+| Crate | Role | Notes |
+| --- | --- | --- |
+| [`anyllm`](crates/anyllm) | Core abstraction | Shared request/response types, streaming, tools, and wrappers |
+| [`anyllm-conformance`](crates/anyllm-conformance) | Test support | Fixture-based conformance helpers and a local mock HTTP server for provider crates |
+
 ## Example
 
 This example uses the built-in mock provider, so it runs without credentials.

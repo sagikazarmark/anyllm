@@ -1,0 +1,19 @@
+[package]
+name = "anyllm-conformance"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+description = "Fixture-based conformance helpers for anyllm provider adapters"
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = ["llm", "testing", "fixtures"]
+categories = { workspace = true }
+
+[dependencies]
+anyllm = { workspace = true }
+axum = "0.8"
+futures = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["net", "rt", "sync"] }

@@ -12,6 +12,9 @@ homepage = "https://github.com/sagikazarmark/anyllm"
 keywords = ["llm", "chat", "streaming"]
 categories = ["artificial-intelligence"]
 
+[workspace.dependencies]
+anyllm = { version = "0.0.1", path = "crates/anyllm" }
+
 [workspace.metadata.release]
 sign-commit = true
 sign-tag = true
