@@ -7,7 +7,7 @@ description = "Low-level, generic LLM provider abstraction for Rust"
 license = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }
-keywords = ["llm", "chat", "streaming", "openai", "gemini", "anthropic"]
+keywords = { workspace = true }
 categories = { workspace = true }
 
 [dependencies]

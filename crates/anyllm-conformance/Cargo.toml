@@ -1,13 +1,14 @@
 [package]
 name = "anyllm-conformance"
+description = "Fixture-based conformance helpers for anyllm provider adapters"
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
-description = "Fixture-based conformance helpers for anyllm provider adapters"
+publish = false
 license = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }
-keywords = ["llm", "testing", "fixtures"]
+keywords = { workspace = true }
 categories = { workspace = true }
 
 [dependencies]
