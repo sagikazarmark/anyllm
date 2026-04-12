@@ -10,7 +10,7 @@
 `anyllm` allows building against chat-style LLM APIs without
 hard-coding the rest of your application to one provider SDK.
 
-The core of the project is the [`anyllm`](anyllm) crate: a small, low-level
+The core of the project is the [`anyllm`](crates/anyllm) crate: a small, low-level
 abstraction layer for shared request and response types, streaming, tool calls,
 and a few wrappers.
 
@@ -26,8 +26,8 @@ orchestration runtime.
 
 ## Where To Start
 
-- use `anyllm` in application code: [`anyllm`](anyllm)
-- implement a provider: [`anyllm/examples/provider_impl.rs`](anyllm/examples/provider_impl.rs)
+- use `anyllm` in application code: [`anyllm`](crates/anyllm)
+- implement a provider: [`crates/anyllm/examples/provider_impl.rs`](crates/anyllm/examples/provider_impl.rs)
 - explore the API: [`docs.rs/anyllm`](https://docs.rs/anyllm)
 
 ## Example

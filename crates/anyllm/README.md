@@ -21,9 +21,9 @@ Use it when you want to:
 
 - API docs: <https://docs.rs/anyllm>
 - `ChatProvider`: <https://docs.rs/anyllm/latest/anyllm/trait.ChatProvider.html>
-- chat example: <https://github.com/sagikazarmark/anyllm/blob/main/anyllm/examples/chat.rs>
-- streaming example: <https://github.com/sagikazarmark/anyllm/blob/main/anyllm/examples/stream.rs>
-- provider implementation example: <https://github.com/sagikazarmark/anyllm/blob/main/anyllm/examples/provider_impl.rs>
+- chat example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/chat.rs>
+- streaming example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/stream.rs>
+- provider implementation example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/provider_impl.rs>
 
 ## Example
 
@@ -95,7 +95,7 @@ Providers with native streaming return their own concrete stream type from
 
 If you need a working skeleton, start here:
 
-- <https://github.com/sagikazarmark/anyllm/blob/main/anyllm/examples/provider_impl.rs>
+- <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/provider_impl.rs>
 
 ## Test Helpers
 
