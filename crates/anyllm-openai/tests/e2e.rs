@@ -2,8 +2,8 @@ use anyllm_conformance::e2e;
 use anyllm_openai::Provider;
 
 fn make_provider() -> Provider {
-    let api_key = std::env::var("OPENAI_API_KEY")
-        .expect("OPENAI_API_KEY must be set to run e2e tests");
+    let api_key =
+        std::env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY must be set to run e2e tests");
     Provider::new(api_key).expect("failed to create OpenAI provider")
 }
 

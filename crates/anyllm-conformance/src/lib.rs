@@ -1,7 +1,6 @@
 pub mod e2e;
 mod http_test_server;
 
-
 use std::path::{Path, PathBuf};
 
 use anyllm::{ChatResponse, ChatStream, StreamCollector, StreamEvent};

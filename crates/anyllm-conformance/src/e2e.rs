@@ -86,10 +86,7 @@ pub async fn system_prompt(provider: &impl ChatProvider, model: &str) {
     let text = response
         .text()
         .expect("system_prompt: response has no text");
-    assert!(
-        !text.is_empty(),
-        "system_prompt: response text is empty"
-    );
+    assert!(!text.is_empty(), "system_prompt: response text is empty");
 
     assert_eq!(
         response.finish_reason,
@@ -111,9 +108,7 @@ pub async fn multi_turn(provider: &impl ChatProvider, model: &str) {
         .await
         .expect("multi_turn: chat request failed");
 
-    let text = response
-        .text()
-        .expect("multi_turn: response has no text");
+    let text = response.text().expect("multi_turn: response has no text");
     assert!(!text.is_empty(), "multi_turn: response text is empty");
 
     assert_eq!(
