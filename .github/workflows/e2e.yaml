@@ -1,0 +1,58 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Provider to test"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - openai
+          - openai-compat
+
+permissions:
+  contents: read
+
+jobs:
+  openai:
+    name: OpenAI
+    if: inputs.provider == 'all' || inputs.provider == 'openai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Run e2e tests
+        run: cargo test -p anyllm-openai --test e2e -- --ignored --nocapture
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  openai-compat:
+    name: OpenAI Compatible
+    if: inputs.provider == 'all' || inputs.provider == 'openai-compat'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      models: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Run e2e tests
+        run: cargo test -p anyllm-openai-compat --test e2e -- --ignored --nocapture
+        env:
+          OPENAI_COMPAT_BASE_URL: https://models.github.ai/inference
+          OPENAI_COMPAT_API_KEY: ${{ github.token }}
+          OPENAI_COMPAT_MODEL: openai/gpt-4o-mini

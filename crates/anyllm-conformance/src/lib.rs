@@ -1,4 +1,6 @@
+pub mod e2e;
 mod http_test_server;
+
 
 use std::path::{Path, PathBuf};
 
