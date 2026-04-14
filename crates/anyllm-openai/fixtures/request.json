@@ -33,7 +33,8 @@
           },
           "required": [
             "q"
-          ]
+          ],
+          "additionalProperties": false
         },
         "strict": true
       }
@@ -58,7 +59,8 @@
         },
         "required": [
           "answer"
-        ]
+        ],
+        "additionalProperties": false
       },
       "strict": true
     }

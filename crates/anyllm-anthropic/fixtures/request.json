@@ -1,0 +1,59 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "max_tokens": 4096,
+  "metadata": {
+    "trace_id": "trace-anthropic-123"
+  },
+  "system": [
+    {
+      "type": "text",
+      "text": "You are a careful assistant.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Find the answer"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "search",
+      "description": "Search docs",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "q"
+        ]
+      }
+    }
+  ],
+  "tool_choice": {
+    "type": "tool",
+    "name": "search"
+  },
+  "temperature": 0.30000001192092896,
+  "top_p": 0.800000011920929,
+  "stop_sequences": [
+    "END"
+  ],
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 2048
+  },
+  "top_k": 12,
+  "stream": false
+}

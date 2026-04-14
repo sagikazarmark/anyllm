@@ -1,0 +1,69 @@
+[
+  {
+    "event": "response_start",
+    "id": "msg_stream_1",
+    "model": "claude-sonnet-4-20250514"
+  },
+  {
+    "event": "response_metadata",
+    "usage": {
+      "cached_input_tokens": 4,
+      "cache_creation_input_tokens": 1,
+      "input_tokens": 12
+    },
+    "id": "msg_stream_1",
+    "model": "claude-sonnet-4-20250514"
+  },
+  {
+    "event": "block_start",
+    "index": 0,
+    "block_type": "reasoning"
+  },
+  {
+    "event": "reasoning_delta",
+    "index": 0,
+    "text": "Let me think"
+  },
+  {
+    "event": "reasoning_delta",
+    "index": 0,
+    "text": "",
+    "signature": "sig_abc"
+  },
+  {
+    "event": "block_stop",
+    "index": 0
+  },
+  {
+    "event": "block_start",
+    "index": 1,
+    "block_type": "text"
+  },
+  {
+    "event": "text_delta",
+    "index": 1,
+    "text": "Hello"
+  },
+  {
+    "event": "text_delta",
+    "index": 1,
+    "text": " world"
+  },
+  {
+    "event": "block_stop",
+    "index": 1
+  },
+  {
+    "event": "response_metadata",
+    "finish_reason": "stop",
+    "usage": {
+      "output_tokens": 7
+    },
+    "usage_mode": "delta",
+    "id": "msg_stream_1",
+    "model": "claude-sonnet-4-20250514"
+  },
+  {
+    "event": "response_stop"
+  }
+]

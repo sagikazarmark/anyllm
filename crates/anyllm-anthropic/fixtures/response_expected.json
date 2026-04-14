@@ -1,0 +1,28 @@
+{
+  "content": [
+    {
+      "type": "reasoning",
+      "text": "Let me think",
+      "signature": "sig_abc"
+    },
+    {
+      "type": "text",
+      "text": "Here is the result."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_1",
+      "name": "search",
+      "arguments": "{\"q\":\"rust\"}"
+    }
+  ],
+  "finish_reason": "tool_calls",
+  "usage": {
+    "cached_input_tokens": 4,
+    "cache_creation_input_tokens": 1,
+    "input_tokens": 12,
+    "output_tokens": 7
+  },
+  "model": "claude-sonnet-4-20250514",
+  "id": "msg_123"
+}

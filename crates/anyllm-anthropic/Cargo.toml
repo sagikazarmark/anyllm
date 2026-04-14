@@ -1,0 +1,42 @@
+[package]
+name = "anyllm-anthropic"
+description = "Anthropic provider for anyllm"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+anyllm = { workspace = true }
+eventsource-stream = "0.2"
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+reqwest-middleware = { version = "0.5", optional = true }
+reqwest-tracing = { version = "0.7", optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+anyllm-conformance = { workspace = true }
+criterion = { workspace = true }
+futures-executor = "0.3"
+tokio = { workspace = true, features = ["macros"] }
+
+[features]
+default = ["extract", "reqwest/default-tls"]
+extract = ["anyllm/extract"]
+http-tracing = ["dep:reqwest-middleware", "dep:reqwest-tracing"]
+bench-internals = []
+
+[package.metadata.docs.rs]
+all-features = true
+
+[[bench]]
+name = "streaming"
+harness = false
+required-features = ["bench-internals"]

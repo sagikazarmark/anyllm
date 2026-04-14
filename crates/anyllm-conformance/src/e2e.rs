@@ -1,4 +1,10 @@
+#[cfg(feature = "extract")]
+use anyllm::ExtractExt;
 use anyllm::{ChatProvider, ChatRequest, ChatStreamExt, FinishReason, ResponseFormat, Tool};
+#[cfg(feature = "extract")]
+use schemars::JsonSchema;
+#[cfg(feature = "extract")]
+use serde::Deserialize;
 use serde_json::json;
 
 /// Validate basic chat: non-empty text, Stop finish reason, usage present.
@@ -203,5 +209,27 @@ pub async fn structured_output(provider: &impl ChatProvider, model: &str) {
     assert!(
         parsed.get("greeting").is_some(),
         "structured_output: JSON missing 'greeting' field: {parsed}"
+    );
+}
+
+/// Validate typed extraction: uses native structured output when the provider
+/// supports it, otherwise falls back to a forced tool call.
+#[cfg(feature = "extract")]
+pub async fn extract<P: ExtractExt>(provider: &P, model: &str) {
+    #[derive(JsonSchema, Deserialize)]
+    struct Greeting {
+        greeting: String,
+    }
+
+    let request = ChatRequest::new(model).user("Say hello in JSON format with a 'greeting' field.");
+
+    let extracted = provider
+        .extract::<Greeting>(&request)
+        .await
+        .expect("extract: extraction failed");
+
+    assert!(
+        !extracted.value.greeting.is_empty(),
+        "extract: greeting field is empty"
     );
 }
