@@ -11,7 +11,9 @@ on:
         options:
           - all
           - openai
-          - openai-compat
+          - openai-compat/all
+          - openai-compat/generic
+          - openai-compat/cloudflare
           - anthropic
 
 permissions:
@@ -36,9 +38,12 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-  openai-compat:
-    name: OpenAI Compatible
-    if: inputs.provider == 'all' || inputs.provider == 'openai-compat'
+  openai-compat-generic:
+    name: OpenAI Compatible (generic)
+    if: |
+      inputs.provider == 'all' ||
+      inputs.provider == 'openai-compat/all' ||
+      inputs.provider == 'openai-compat/generic'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -57,6 +62,28 @@ jobs:
           OPENAI_COMPAT_BASE_URL: https://models.github.ai/inference
           OPENAI_COMPAT_API_KEY: ${{ github.token }}
           OPENAI_COMPAT_MODEL: openai/gpt-4o-mini
+
+  openai-compat-cloudflare:
+    name: OpenAI Compatible (Cloudflare)
+    if: |
+      inputs.provider == 'all' ||
+      inputs.provider == 'openai-compat/all' ||
+      inputs.provider == 'openai-compat/cloudflare'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Run e2e tests
+        run: cargo test -p anyllm-openai-compat --test e2e_cloudflare -- --ignored --nocapture
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
   anthropic:
     name: Anthropic

@@ -307,14 +307,25 @@ impl SseState {
         if let Some(ref usage) = chunk.usage {
             // OpenAI-compatible chunk usage is cumulative for the response and
             // should replace any previously seen usage snapshot.
-            events.push(Ok(StreamEvent::ResponseMetadata {
-                finish_reason: None,
-                usage: Some(from_api_usage(usage)),
-                usage_mode: UsageMetadataMode::Snapshot,
-                id: self.response_id.clone(),
-                model: self.model.clone(),
-                metadata: ExtraMap::new(),
-            }));
+            //
+            // Workaround (Cloudflare Workers AI, undocumented): the
+            // `/ai/v1/chat/completions` streaming endpoint emits the usage chunk
+            // twice — first with real counts, then a trailing all-zero payload
+            // that would otherwise clobber the real values. Drop zero-usage
+            // payloads; a successful response with genuinely zero tokens is
+            // implausible and not worth reporting as a snapshot.
+            let is_all_zero =
+                usage.prompt_tokens == 0 && usage.completion_tokens == 0 && usage.total_tokens == 0;
+            if !is_all_zero {
+                events.push(Ok(StreamEvent::ResponseMetadata {
+                    finish_reason: None,
+                    usage: Some(from_api_usage(usage)),
+                    usage_mode: UsageMetadataMode::Snapshot,
+                    id: self.response_id.clone(),
+                    model: self.model.clone(),
+                    metadata: ExtraMap::new(),
+                }));
+            }
         }
 
         events
