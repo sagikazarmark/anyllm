@@ -1,0 +1,24 @@
+[
+  {
+    "event": "response_start",
+    "id": "gem_stream_trunc_1",
+    "model": "gemini-2.5-pro"
+  },
+  {
+    "event": "block_start",
+    "index": 0,
+    "block_type": "text"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": "Partial answer"
+  },
+  {
+    "event": "block_stop",
+    "index": 0
+  },
+  {
+    "event": "response_stop"
+  }
+]

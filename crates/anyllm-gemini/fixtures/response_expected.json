@@ -1,0 +1,28 @@
+{
+  "content": [
+    {
+      "type": "reasoning",
+      "text": "Thinking..."
+    },
+    {
+      "type": "text",
+      "text": "Here is the answer."
+    },
+    {
+      "type": "tool_call",
+      "id": "gemini:gem_resp_1:call:0",
+      "name": "search",
+      "arguments": "{\"q\":\"rust docs\"}"
+    }
+  ],
+  "finish_reason": "tool_calls",
+  "usage": {
+    "cached_input_tokens": 2,
+    "input_tokens": 8,
+    "output_tokens": 6,
+    "reasoning_tokens": 1,
+    "total_tokens": 14
+  },
+  "model": "gemini-2.5-pro",
+  "id": "gem_resp_1"
+}

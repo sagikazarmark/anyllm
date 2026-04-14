@@ -1,0 +1,35 @@
+{
+  "responseId": "gem_resp_1",
+  "modelVersion": "gemini-2.5-pro",
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "Thinking...",
+            "thought": true
+          },
+          {
+            "text": "Here is the answer."
+          },
+          {
+            "functionCall": {
+              "name": "search",
+              "args": {
+                "q": "rust docs"
+              }
+            }
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 8,
+    "candidatesTokenCount": 6,
+    "totalTokenCount": 14,
+    "cachedContentTokenCount": 2,
+    "thoughtsTokenCount": 1
+  }
+}
