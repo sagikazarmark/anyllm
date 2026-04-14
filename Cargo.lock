@@ -82,6 +82,7 @@ dependencies = [
  "axum",
  "futures-core",
  "futures-util",
+ "schemars",
  "serde",
  "serde_json",
  "tokio",

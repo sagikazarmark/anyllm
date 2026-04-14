@@ -581,7 +581,7 @@ where
         response_format: None,
         seed: request.seed,
         reasoning: request.reasoning.clone(),
-        parallel_tool_calls: Some(false),
+        parallel_tool_calls: None,
         options: request.options.clone(),
     })
 }
@@ -799,7 +799,7 @@ mod tests {
             recorded[0].tool_choice,
             Some(ToolChoice::Specific { ref name }) if name == "submit_structured_output"
         ));
-        assert_eq!(recorded[0].parallel_tool_calls, Some(false));
+        assert_eq!(recorded[0].parallel_tool_calls, None);
     }
 
     #[tokio::test]

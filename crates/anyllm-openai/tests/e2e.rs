@@ -46,3 +46,10 @@ async fn tool_calling() {
 async fn structured_output() {
     e2e::structured_output(&make_provider(), &model()).await;
 }
+
+#[cfg(feature = "extract")]
+#[tokio::test]
+#[ignore]
+async fn extract() {
+    e2e::extract(&make_provider(), &model()).await;
+}

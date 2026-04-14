@@ -40,3 +40,10 @@ async fn multi_turn() {
 async fn tool_calling() {
     e2e::tool_calling(&make_provider(), &model()).await;
 }
+
+#[cfg(feature = "extract")]
+#[tokio::test]
+#[ignore]
+async fn extract() {
+    e2e::extract(&make_provider(), &model()).await;
+}
