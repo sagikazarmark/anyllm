@@ -15,7 +15,7 @@ erased-serde = "0.4"
 futures-core = { workspace = true }
 futures-timer = "3.0"
 futures-util = { workspace = true }
-schemars = { version = "1.2", optional = true }
+schemars = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }
 tracing = { version = "0.1", optional = true }
