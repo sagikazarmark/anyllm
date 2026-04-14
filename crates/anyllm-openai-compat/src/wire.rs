@@ -240,12 +240,17 @@ pub fn to_chat_completion_request(
                     .and_then(|extensions| extensions.get("strict"))
                     .and_then(|value| value.as_bool());
 
+                let mut parameters = tool.parameters.clone();
+                if strict == Some(true) {
+                    inject_strict_additional_properties(&mut parameters);
+                }
+
                 api_tools.push(ApiTool {
                     tool_type: TOOL_TYPE_FUNCTION.to_string(),
                     function: ApiFunctionDef {
                         name: tool.name.clone(),
                         description: tool.description.clone(),
-                        parameters: tool.parameters.clone(),
+                        parameters,
                         strict,
                     },
                 });
@@ -281,11 +286,16 @@ pub fn to_chat_completion_request(
                 schema,
                 strict,
             } => {
+                let mut schema = schema.clone();
+                if *strict == Some(true) {
+                    inject_strict_additional_properties(&mut schema);
+                }
+
                 let mut json_schema = serde_json::Map::new();
                 if let Some(name) = name {
                     json_schema.insert("name".to_string(), serde_json::json!(name));
                 }
-                json_schema.insert("schema".to_string(), schema.clone());
+                json_schema.insert("schema".to_string(), schema);
                 if let Some(strict) = strict {
                     json_schema.insert("strict".to_string(), serde_json::json!(strict));
                 }
@@ -349,6 +359,41 @@ pub fn to_chat_completion_request(
         stream_options,
         extra: provider_options.extra.clone(),
     })
+}
+
+/// Recursively inject `additionalProperties: false` into every object schema node.
+///
+/// OpenAI's strict mode (on `response_format` JSON schemas and on strict tool function
+/// parameters) requires every object schema to explicitly set `additionalProperties: false`.
+/// Most schema generators (including `schemars`) do not emit this by default, so without
+/// intervention users have to annotate their types with `#[serde(deny_unknown_fields)]`.
+///
+/// This walker preserves any existing `additionalProperties` value the caller supplied so
+/// they retain an explicit escape hatch. Nodes that declare `type: "object"` or expose a
+/// `properties` map are treated as objects.
+fn inject_strict_additional_properties(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            let is_object = map.get("type").and_then(|value| value.as_str()) == Some("object")
+                || map.contains_key("properties");
+            if is_object && !map.contains_key("additionalProperties") {
+                map.insert(
+                    "additionalProperties".to_string(),
+                    serde_json::Value::Bool(false),
+                );
+            }
+
+            for value in map.values_mut() {
+                inject_strict_additional_properties(value);
+            }
+        }
+        serde_json::Value::Array(values) => {
+            for value in values {
+                inject_strict_additional_properties(value);
+            }
+        }
+        _ => {}
+    }
 }
 
 pub fn convert_message(message: &Message) -> anyllm::Result<ApiMessage> {
@@ -596,4 +641,104 @@ where
     converted.model = Some(model);
     converted.id = Some(id);
     Ok(converted)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn inject_strict_adds_additional_properties_to_simple_object() {
+        let mut schema = json!({
+            "type": "object",
+            "properties": {"greeting": {"type": "string"}},
+            "required": ["greeting"]
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert_eq!(schema["additionalProperties"], json!(false));
+    }
+
+    #[test]
+    fn inject_strict_recurses_into_nested_objects() {
+        let mut schema = json!({
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}}
+                }
+            }
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert_eq!(schema["additionalProperties"], json!(false));
+        assert_eq!(
+            schema["properties"]["user"]["additionalProperties"],
+            json!(false)
+        );
+    }
+
+    #[test]
+    fn inject_strict_handles_array_items() {
+        let mut schema = json!({
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"id": {"type": "string"}}
+                    }
+                }
+            }
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert_eq!(
+            schema["properties"]["items"]["items"]["additionalProperties"],
+            json!(false)
+        );
+    }
+
+    #[test]
+    fn inject_strict_handles_anyof_oneof_allof() {
+        let mut schema = json!({
+            "anyOf": [
+                {"type": "object", "properties": {"a": {"type": "string"}}},
+                {"type": "object", "properties": {"b": {"type": "string"}}}
+            ]
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert_eq!(schema["anyOf"][0]["additionalProperties"], json!(false));
+        assert_eq!(schema["anyOf"][1]["additionalProperties"], json!(false));
+    }
+
+    #[test]
+    fn inject_strict_preserves_explicit_additional_properties() {
+        let mut schema = json!({
+            "type": "object",
+            "properties": {"a": {"type": "string"}},
+            "additionalProperties": {"type": "integer"}
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert_eq!(schema["additionalProperties"], json!({"type": "integer"}));
+    }
+
+    #[test]
+    fn inject_strict_detects_object_by_properties_key() {
+        // Schema omits "type" but has "properties" — treat as object.
+        let mut schema = json!({
+            "properties": {"a": {"type": "string"}}
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert_eq!(schema["additionalProperties"], json!(false));
+    }
+
+    #[test]
+    fn inject_strict_leaves_non_object_nodes_alone() {
+        let mut schema = json!({
+            "type": "string"
+        });
+        inject_strict_additional_properties(&mut schema);
+        assert!(schema.get("additionalProperties").is_none());
+    }
 }

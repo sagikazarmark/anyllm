@@ -1,6 +1,6 @@
-use anyllm::{ChatProvider, ChatRequest, ChatStreamExt, FinishReason, ResponseFormat, Tool};
 #[cfg(feature = "extract")]
 use anyllm::ExtractExt;
+use anyllm::{ChatProvider, ChatRequest, ChatStreamExt, FinishReason, ResponseFormat, Tool};
 #[cfg(feature = "extract")]
 use schemars::JsonSchema;
 #[cfg(feature = "extract")]
@@ -217,13 +217,11 @@ pub async fn structured_output(provider: &impl ChatProvider, model: &str) {
 #[cfg(feature = "extract")]
 pub async fn extract<P: ExtractExt>(provider: &P, model: &str) {
     #[derive(JsonSchema, Deserialize)]
-    #[serde(deny_unknown_fields)]
     struct Greeting {
         greeting: String,
     }
 
-    let request = ChatRequest::new(model)
-        .user("Say hello in JSON format with a 'greeting' field.");
+    let request = ChatRequest::new(model).user("Say hello in JSON format with a 'greeting' field.");
 
     let extracted = provider
         .extract::<Greeting>(&request)
