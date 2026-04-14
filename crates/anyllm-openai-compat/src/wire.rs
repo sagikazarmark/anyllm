@@ -129,11 +129,32 @@ pub struct ChatCompletionChoice {
 pub struct ChatCompletionMessage {
     #[allow(dead_code)]
     pub role: String,
+    #[serde(default, deserialize_with = "deserialize_string_or_json")]
     pub content: Option<String>,
     #[serde(default)]
     pub tool_calls: Option<Vec<ApiToolCall>>,
     #[serde(default)]
     pub refusal: Option<String>,
+}
+
+/// Deserialize a message `content` field that may arrive either as a JSON
+/// string (per OpenAI spec) or as a structured JSON value.
+///
+/// Workaround (Cloudflare Workers AI, undocumented): when `response_format`
+/// is a strict `json_schema`, the `/ai/v1/chat/completions` endpoint returns
+/// `content` as a parsed JSON object (e.g. `{"greeting": "hello"}`) instead
+/// of the stringified form OpenAI's spec requires. This accepts both shapes
+/// and re-serializes non-string values back to their JSON string form so
+/// downstream consumers see a uniform `String`.
+fn deserialize_string_or_json<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.map(|value| match value {
+        serde_json::Value::String(s) => s,
+        other => other.to_string(),
+    }))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -740,5 +761,38 @@ mod tests {
         });
         inject_strict_additional_properties(&mut schema);
         assert!(schema.get("additionalProperties").is_none());
+    }
+
+    #[test]
+    fn chat_completion_message_accepts_string_content() {
+        let raw = json!({
+            "role": "assistant",
+            "content": "hello world"
+        });
+        let message: ChatCompletionMessage = serde_json::from_value(raw).unwrap();
+        assert_eq!(message.content.as_deref(), Some("hello world"));
+    }
+
+    #[test]
+    fn chat_completion_message_coerces_object_content_to_json_string() {
+        // Cloudflare Workers AI returns strict-schema responses with `content`
+        // as a parsed JSON object instead of a stringified payload.
+        let raw = json!({
+            "role": "assistant",
+            "content": {"greeting": "hello"}
+        });
+        let message: ChatCompletionMessage = serde_json::from_value(raw).unwrap();
+        assert_eq!(message.content.as_deref(), Some(r#"{"greeting":"hello"}"#));
+    }
+
+    #[test]
+    fn chat_completion_message_handles_missing_and_null_content() {
+        let missing: ChatCompletionMessage =
+            serde_json::from_value(json!({"role": "assistant"})).unwrap();
+        assert!(missing.content.is_none());
+
+        let null_content: ChatCompletionMessage =
+            serde_json::from_value(json!({"role": "assistant", "content": null})).unwrap();
+        assert!(null_content.content.is_none());
     }
 }
