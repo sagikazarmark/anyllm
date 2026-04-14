@@ -5,7 +5,8 @@ use anyllm::{
 use anyllm_openai_compat::{
     RequestOptions, SseState, process_sse_data, to_chat_completion_request,
 };
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use std::hint::black_box;
+use criterion::{Criterion, criterion_group, criterion_main};
 use serde_json::json;
 
 fn bench_request() -> ChatRequest {
