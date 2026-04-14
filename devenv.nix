@@ -6,9 +6,10 @@
   packages = with pkgs; [
     lld
 
+    cargo-audit
+    cargo-expand
     cargo-release
     cargo-watch
-    cargo-expand
   ];
 
   languages = {
