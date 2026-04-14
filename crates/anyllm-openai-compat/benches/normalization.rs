@@ -5,9 +5,9 @@ use anyllm::{
 use anyllm_openai_compat::{
     RequestOptions, SseState, process_sse_data, to_chat_completion_request,
 };
-use std::hint::black_box;
 use criterion::{Criterion, criterion_group, criterion_main};
 use serde_json::json;
+use std::hint::black_box;
 
 fn bench_request() -> ChatRequest {
     let mut request = ChatRequest::new("gpt-4o-mini")
