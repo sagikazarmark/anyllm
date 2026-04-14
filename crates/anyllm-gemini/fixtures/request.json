@@ -1,0 +1,74 @@
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Find rust docs"
+        }
+      ]
+    }
+  ],
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "You are a precise assistant."
+      }
+    ]
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "name": "search",
+          "description": "Search docs",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "q": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "q"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "toolConfig": {
+    "functionCallingConfig": {
+      "mode": "ANY",
+      "allowedFunctionNames": [
+        "search"
+      ]
+    }
+  },
+  "generationConfig": {
+    "temperature": 0.4000000059604645,
+    "candidateCount": 1,
+    "topK": 7,
+    "topP": 0.800000011920929,
+    "maxOutputTokens": 256,
+    "stopSequences": [
+      "END"
+    ],
+    "responseMimeType": "application/json",
+    "responseSchema": {
+      "type": "object",
+      "properties": {
+        "answer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "answer"
+      ]
+    },
+    "thinkingConfig": {
+      "thinkingBudget": 1024
+    }
+  },
+  "cachedContent": "cached/abc"
+}

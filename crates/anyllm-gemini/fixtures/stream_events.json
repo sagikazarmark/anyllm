@@ -1,0 +1,45 @@
+[
+  {
+    "event": "response_start",
+    "id": "gem_stream_1",
+    "model": "gemini-2.5-pro"
+  },
+  {
+    "event": "block_start",
+    "index": 0,
+    "block_type": "text"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": "Hello"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": " world"
+  },
+  {
+    "event": "block_stop",
+    "index": 0
+  },
+  {
+    "event": "response_metadata",
+    "finish_reason": "stop",
+    "id": "gem_stream_1",
+    "model": "gemini-2.5-pro"
+  },
+  {
+    "event": "response_metadata",
+    "usage": {
+      "input_tokens": 9,
+      "output_tokens": 4,
+      "total_tokens": 13
+    },
+    "id": "gem_stream_1",
+    "model": "gemini-2.5-pro"
+  },
+  {
+    "event": "response_stop"
+  }
+]

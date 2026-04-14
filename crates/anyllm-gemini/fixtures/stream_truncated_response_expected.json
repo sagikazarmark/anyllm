@@ -1,0 +1,10 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Partial answer"
+    }
+  ],
+  "model": "gemini-2.5-pro",
+  "id": "gem_stream_trunc_1"
+}

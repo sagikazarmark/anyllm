@@ -1,0 +1,4 @@
+{
+  "type": "stream",
+  "message": "stream incomplete: start=true, stop=false, open_blocks=true, dropped_incomplete_tool_calls=false"
+}
