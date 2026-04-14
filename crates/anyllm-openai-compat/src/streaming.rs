@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use anyllm::{ChatStream, ExtraMap, StreamBlockType, StreamEvent, UsageMetadataMode};
 use eventsource_stream::Eventsource;
-use futures::StreamExt;
+use futures_util::StreamExt;
 
 use crate::wire::{ChatCompletionChunk, from_api_usage, parse_finish_reason};
 
@@ -327,14 +327,14 @@ pub fn process_sse_data(state: &mut SseState, data: &str) -> Vec<anyllm::Result<
 
 pub fn sse_to_stream<S, B, E, F>(byte_stream: S, map_stream_error: F) -> ChatStream
 where
-    S: futures::Stream<Item = Result<B, E>> + Send + Unpin + 'static,
+    S: futures_core::Stream<Item = Result<B, E>> + Send + Unpin + 'static,
     B: AsRef<[u8]>,
     E: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
     F: Fn(eventsource_stream::EventStreamError<E>) -> anyllm::Error + Send + Sync + Copy + 'static,
 {
     let event_stream = byte_stream.eventsource();
 
-    Box::pin(futures::stream::unfold(
+    Box::pin(futures_util::stream::unfold(
         (
             event_stream,
             SseState::new(),

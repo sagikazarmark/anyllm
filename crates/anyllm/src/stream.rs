@@ -2780,7 +2780,7 @@ mod tests {
             Ok(StreamEvent::ResponseStop),
         ];
 
-        let response = futures::stream::iter(events)
+        let response = futures_util::stream::iter(events)
             .collect_response()
             .await
             .unwrap();
@@ -2799,7 +2799,7 @@ mod tests {
             Err(Error::Timeout("slow stream".into())),
         ];
 
-        match futures::stream::iter(events).collect_response().await {
+        match futures_util::stream::iter(events).collect_response().await {
             Err(Error::Timeout(message)) => assert_eq!(message, "slow stream"),
             Err(other) => panic!("expected timeout error, got {other:?}"),
             Ok(_) => panic!("expected collect_response to return an error"),
@@ -2828,7 +2828,7 @@ mod tests {
             Err(Error::Timeout("slow stream".into())),
         ];
 
-        let collected = futures::stream::iter(events)
+        let collected = futures_util::stream::iter(events)
             .collect_partial()
             .await
             .unwrap();
@@ -2863,7 +2863,7 @@ mod tests {
             Ok(StreamEvent::ResponseStop),
         ];
 
-        let collected = futures::stream::iter(events)
+        let collected = futures_util::stream::iter(events)
             .collect_partial()
             .await
             .unwrap();

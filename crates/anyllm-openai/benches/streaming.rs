@@ -13,8 +13,8 @@ fn bench_openai_streaming(c: &mut Criterion) {
     let text = openai_sse_text();
     c.bench_function("openai_stream_event_translation", |b| {
         b.iter(|| {
-            futures::executor::block_on(async {
-                use futures::StreamExt;
+            futures_executor::block_on(async {
+                use futures_util::StreamExt;
                 let mut stream = anyllm_openai::conformance_stream_from_sse_text(black_box(text));
                 let mut events = Vec::<Result<StreamEvent>>::new();
                 while let Some(event) = stream.next().await {

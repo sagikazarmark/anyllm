@@ -15,6 +15,14 @@ categories = ["artificial-intelligence"]
 [workspace.dependencies]
 anyllm = { version = "0.0.1", path = "crates/anyllm" }
 anyllm-conformance = { version = "0.0.1", path = "crates/anyllm-conformance" }
+anyllm-openai-compat = { version = "0.0.1", path = "crates/anyllm-openai-compat", default-features = false }
+criterion = "0.8"
+futures-core = "0.3"
+futures-util = "0.3"
+reqwest = { version = "0.13", default-features = false, features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = "1"
 
 [workspace.metadata.release]
 sign-commit = true

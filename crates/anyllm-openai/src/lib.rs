@@ -321,7 +321,7 @@ pub fn conformance_stream_from_sse_text(text: &str) -> anyllm::ChatStream {
         format!("{text}\n\n")
     };
 
-    streaming::sse_to_stream(futures::stream::iter([Ok::<Vec<u8>, std::io::Error>(
+    streaming::sse_to_stream(futures_util::stream::iter([Ok::<Vec<u8>, std::io::Error>(
         normalized.into_bytes(),
     )]))
 }

@@ -4,7 +4,7 @@ mod http_test_server;
 use std::path::{Path, PathBuf};
 
 use anyllm::{ChatResponse, ChatStream, StreamCollector, StreamEvent};
-use futures::StreamExt;
+use futures_util::StreamExt;
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -89,13 +89,13 @@ pub fn assert_event_results_fixture_eq(
 
 pub fn byte_stream_from_sse_text(
     text: &str,
-) -> impl futures::Stream<Item = Result<Vec<u8>, std::io::Error>> + Send + Unpin + 'static {
+) -> impl futures_core::Stream<Item = Result<Vec<u8>, std::io::Error>> + Send + Unpin + 'static {
     let normalized = if text.ends_with("\n\n") {
         text.to_string()
     } else {
         format!("{text}\n\n")
     };
-    futures::stream::iter(vec![Ok(normalized.into_bytes())])
+    futures_util::stream::iter(vec![Ok(normalized.into_bytes())])
 }
 
 async fn collect_stream_events(

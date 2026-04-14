@@ -13,18 +13,19 @@ categories = { workspace = true }
 [dependencies]
 anyllm = { workspace = true }
 eventsource-stream = "0.2"
-futures = "0.3"
-reqwest = { version = "0.13", default-features = false, features = ["json", "stream", "rustls"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 anyllm-conformance = { workspace = true }
-tokio = { version = "1", features = ["full", "test-util"] }
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
 
 [features]
-default = []
+default = ["reqwest/default-tls"]
 extract = ["anyllm/extract"]
 
 [package.metadata.docs.rs]

@@ -6,7 +6,7 @@ use crate::error::map_stream_error;
 
 pub(crate) fn sse_to_stream<S, B, E>(byte_stream: S) -> ChatStream
 where
-    S: futures::Stream<Item = std::result::Result<B, E>> + Send + Unpin + 'static,
+    S: futures_core::Stream<Item = std::result::Result<B, E>> + Send + Unpin + 'static,
     B: AsRef<[u8]>,
     E: std::fmt::Display + std::fmt::Debug + Send + Sync + 'static,
 {
@@ -331,7 +331,7 @@ data: [DONE]\n\
 \n";
 
         let byte_stream =
-            futures::stream::iter(vec![Ok::<&[u8], std::io::Error>(sse_data.as_slice())]);
+            futures_util::stream::iter(vec![Ok::<&[u8], std::io::Error>(sse_data.as_slice())]);
         let chat_stream = sse_to_stream(byte_stream);
         let response = chat_stream.collect_response().await.unwrap();
 

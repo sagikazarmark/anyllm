@@ -1,10 +1,10 @@
 [package]
 name = "anyllm-conformance"
 description = "Fixture-based conformance helpers for anyllm provider adapters"
+publish = false
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
-publish = false
 license = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }
@@ -14,7 +14,8 @@ categories = { workspace = true }
 [dependencies]
 anyllm = { workspace = true }
 axum = "0.8"
-futures = "0.3"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tokio = { version = "1", features = ["net", "rt", "sync"] }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["net", "rt", "sync"] }
