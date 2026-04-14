@@ -56,6 +56,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyllm-anthropic"
+version = "0.0.1"
+dependencies = [
+ "anyllm",
+ "anyllm-conformance",
+ "criterion",
+ "eventsource-stream",
+ "futures-core",
+ "futures-executor",
+ "futures-util",
+ "reqwest",
+ "reqwest-middleware",
+ "reqwest-tracing",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "anyllm-conformance"
 version = "0.0.1"
 dependencies = [

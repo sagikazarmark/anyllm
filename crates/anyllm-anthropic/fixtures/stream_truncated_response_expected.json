@@ -1,0 +1,13 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "Partial answer"
+    }
+  ],
+  "usage": {
+    "input_tokens": 12
+  },
+  "model": "claude-sonnet-4-20250514",
+  "id": "msg_stream_trunc_1"
+}

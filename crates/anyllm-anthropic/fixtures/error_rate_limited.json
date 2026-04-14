@@ -1,0 +1,5 @@
+{
+  "type": "rate_limited",
+  "message": "too many requests",
+  "request_id": "req-anthropic-429"
+}

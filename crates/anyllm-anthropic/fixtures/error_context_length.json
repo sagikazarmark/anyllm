@@ -1,0 +1,4 @@
+{
+  "type": "context_length_exceeded",
+  "message": "prompt is too long: 200000 tokens"
+}
