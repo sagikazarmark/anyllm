@@ -12,7 +12,7 @@ categories = { workspace = true }
 
 [dependencies]
 anyllm = { workspace = true }
-eventsource-stream = "0.2"
+eventsource-stream = { workspace = true }
 futures-core = { workspace = true }
 futures-util = { workspace = true }
 reqwest = { workspace = true }
