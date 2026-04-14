@@ -7,6 +7,7 @@
     lld
 
     cargo-audit
+    cargo-deny
     cargo-expand
     cargo-release
     cargo-watch

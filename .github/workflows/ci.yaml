@@ -88,6 +88,23 @@ jobs:
       - name: Build documentation
         run: cargo doc --workspace --all-features --no-deps
 
+  features:
+    name: Features
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Check (default features)
+        run: cargo check --workspace --all-targets
+
+      - name: Check (no default features)
+        run: cargo check --workspace --all-targets --no-default-features
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -121,3 +138,20 @@ jobs:
 
       - name: Run cargo audit
         run: cargo audit
+
+  deny:
+    name: Deny
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked
+
+      - name: Run cargo deny
+        run: cargo deny check
