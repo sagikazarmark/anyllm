@@ -67,6 +67,49 @@ pub fn assert_error_fixture_eq(actual: &anyllm::Error, fixtures: &FixtureDir, na
     );
 }
 
+pub fn assert_embedding_request_fixture_eq(
+    actual: &anyllm::EmbeddingRequest,
+    fixtures: &FixtureDir,
+    name: &str,
+) {
+    let actual = serde_json::json!({
+        "model": actual.model,
+        "inputs": actual.inputs,
+        "dimensions": actual.dimensions,
+    });
+    let expected = load_json_fixture(fixtures, name);
+    assert_eq!(
+        actual, expected,
+        "embedding request fixture mismatch: {name}"
+    );
+}
+
+pub fn assert_embedding_response_fixture_eq(
+    actual: &anyllm::EmbeddingResponse,
+    fixtures: &FixtureDir,
+    name: &str,
+) {
+    let expected = load_json_fixture(fixtures, name);
+    assert_eq!(
+        actual.to_log_value(),
+        expected,
+        "embedding response fixture mismatch: {name}"
+    );
+}
+
+pub fn assert_embedding_error_fixture_eq(
+    actual: &anyllm::Error,
+    fixtures: &FixtureDir,
+    name: &str,
+) {
+    let expected = load_json_fixture(fixtures, name);
+    assert_eq!(
+        serde_json::to_value(actual.as_log()).expect("serialize error log view"),
+        expected,
+        "embedding error fixture mismatch: {name}"
+    );
+}
+
 pub fn assert_event_results_fixture_eq(
     actual: &[anyllm::Result<StreamEvent>],
     fixtures: &FixtureDir,
@@ -179,4 +222,44 @@ pub async fn assert_stream_finish_error_fixture_eq(
         .finish()
         .expect_err("stream fixture should fail strict collection");
     assert_error_fixture_eq(&err, fixtures, error_name);
+}
+
+#[cfg(test)]
+mod embedding_assertion_tests {
+    use super::*;
+    use anyllm::{EmbeddingResponse, Usage};
+    use tempfile::TempDir;
+
+    fn write_fixture(dir: &TempDir, name: &str, content: &str) -> FixtureDir {
+        let path = dir.path().join(name);
+        std::fs::write(&path, content).unwrap();
+        FixtureDir::new(dir.path().to_path_buf())
+    }
+
+    #[test]
+    fn response_fixture_eq_passes_for_matching_json() {
+        let dir = TempDir::new().unwrap();
+        let fixtures = write_fixture(
+            &dir,
+            "embed_response_expected.json",
+            r#"{"embeddings":[[0.0,1.0]],"model":"m","usage":{"input_tokens":5}}"#,
+        );
+        let response = EmbeddingResponse::new(vec![vec![0.0, 1.0]])
+            .model("m")
+            .usage(Usage::new().input_tokens(5));
+        assert_embedding_response_fixture_eq(&response, &fixtures, "embed_response_expected.json");
+    }
+
+    #[test]
+    #[should_panic(expected = "embedding response fixture mismatch")]
+    fn response_fixture_eq_panics_on_mismatch() {
+        let dir = TempDir::new().unwrap();
+        let fixtures = write_fixture(
+            &dir,
+            "embed_response_expected.json",
+            r#"{"embeddings":[[0.0]],"model":"other"}"#,
+        );
+        let response = EmbeddingResponse::new(vec![vec![0.0, 1.0]]).model("m");
+        assert_embedding_response_fixture_eq(&response, &fixtures, "embed_response_expected.json");
+    }
 }
