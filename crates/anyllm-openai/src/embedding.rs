@@ -17,10 +17,8 @@ impl Provider {
         request: &EmbeddingRequest,
     ) -> Result<reqwest::Response> {
         let provider_options = request.option::<EmbeddingRequestOptions>();
-        let compat_options = CompatEmbeddingRequestOptions {
-            user: provider_options.and_then(|o| o.user.clone()),
-            ..Default::default()
-        };
+        let mut compat_options = CompatEmbeddingRequestOptions::default();
+        compat_options.user = provider_options.and_then(|o| o.user.clone());
         let api_request = to_embeddings_request(request, &compat_options)?;
 
         let config = self.transport_config();

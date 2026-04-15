@@ -121,3 +121,4 @@ jobs:
           OPENAI_COMPAT_BASE_URL: https://models.github.ai/inference
           OPENAI_COMPAT_API_KEY: ${{ github.token }}
           OPENAI_COMPAT_MODEL: openai/gpt-4o-mini
+          OPENAI_COMPAT_EMBEDDING_MODEL: openai/text-embedding-3-small
