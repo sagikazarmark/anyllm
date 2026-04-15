@@ -34,8 +34,6 @@
 mod chat;
 mod embedding;
 mod error;
-#[cfg(feature = "extract")]
-mod extract;
 mod identity;
 /// Mock providers for testing. Enable the `mock` feature to use these types
 /// as a library consumer. These types are not covered by the semver stability
@@ -58,16 +56,16 @@ pub use chat::{
 };
 #[cfg(feature = "tracing")]
 pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
+#[cfg(feature = "extract")]
+pub use chat::{
+    ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
+    ExtractionRequest, Extractor,
+};
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
     EmbeddingRequest, EmbeddingResponse,
 };
 pub use error::{Error, ErrorLog, Result, SerializationError};
-#[cfg(feature = "extract")]
-pub use extract::{
-    ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
-    ExtractionRequest, Extractor,
-};
 pub use identity::ProviderIdentity;
 #[cfg(any(test, feature = "mock"))]
 pub use mock::{

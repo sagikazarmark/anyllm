@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use crate::{ProviderIdentity, Result};
 
 mod content;
+#[cfg(feature = "extract")]
+mod extract;
 mod fallback;
 mod message;
 mod request;
@@ -19,6 +21,11 @@ mod tool;
 mod tracing;
 
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
+#[cfg(feature = "extract")]
+pub use extract::{
+    ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
+    ExtractionRequest, Extractor,
+};
 pub use fallback::FallbackChatProvider;
 pub use message::{
     AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,

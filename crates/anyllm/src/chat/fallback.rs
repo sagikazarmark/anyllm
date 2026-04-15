@@ -522,8 +522,8 @@ mod tests {
     #[test]
     fn default_policy_rejects_extract_errors() {
         let error = Error::Extract(Box::new(
-            crate::extract::ExtractError::MissingStructuredText {
-                mode: crate::extract::ExtractionMode::Native,
+            crate::ExtractError::MissingStructuredText {
+                mode: crate::ExtractionMode::Native,
                 provider: "mock".into(),
             },
         ));
