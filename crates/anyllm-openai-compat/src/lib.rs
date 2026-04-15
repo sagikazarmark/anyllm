@@ -4,12 +4,17 @@ use std::sync::Arc;
 use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
 
 mod chat;
+mod embedding;
 mod error;
 mod options;
 pub mod providers;
 mod streaming;
 mod wire;
 
+pub use embedding::{
+    EmbeddingData, EmbeddingRequestOptions, EmbeddingsRequest, EmbeddingsResponse, EmbeddingsUsage,
+    from_embeddings_response, send_embeddings_request, to_embeddings_request,
+};
 pub use error::{
     map_http_error, map_response_deserialize_error, map_stream_error, map_transport_error,
 };
