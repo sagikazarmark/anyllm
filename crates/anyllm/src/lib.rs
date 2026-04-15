@@ -46,7 +46,6 @@ mod mock;
 mod options;
 mod retry;
 mod stream;
-mod tool;
 mod usage;
 mod utils;
 
@@ -59,8 +58,8 @@ pub use chat::{
     AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
     ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord,
     ContentBlock, ContentPart, DynChatProvider, FinishReason, ImageBlockRef, ImagePartRef,
-    ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
-    ToolCallRef, ToolMessageRef, ToolResultContent, UserContent, UserMessageRef,
+    ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat, Tool,
+    ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent, UserContent, UserMessageRef,
 };
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
@@ -85,7 +84,6 @@ pub use stream::{
     ChatStream, ChatStreamExt, CollectedResponse, SingleResponseStream, StreamBlockType,
     StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
 };
-pub use tool::{Tool, ToolChoice};
 pub use usage::Usage;
 
 /// Portable JSON object used for provider-specific escape hatches.

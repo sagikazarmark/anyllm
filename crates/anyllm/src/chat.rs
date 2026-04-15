@@ -11,6 +11,7 @@ mod content;
 mod message;
 mod request;
 mod response;
+mod tool;
 
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use message::{
@@ -19,6 +20,7 @@ pub use message::{
 };
 pub use request::{ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat};
 pub use response::{ChatResponse, ChatResponseRecord, FinishReason};
+pub use tool::{Tool, ToolChoice};
 
 /// Core trait for LLM chat completion providers.
 ///
