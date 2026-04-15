@@ -90,6 +90,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyllm-examples"
+version = "0.0.1"
+dependencies = [
+ "anyllm",
+ "anyllm-anthropic",
+ "anyllm-gemini",
+ "anyllm-openai",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "anyllm-gemini"
 version = "0.0.1"
 dependencies = [

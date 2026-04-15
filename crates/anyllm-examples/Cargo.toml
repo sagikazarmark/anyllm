@@ -1,0 +1,20 @@
+[package]
+name = "anyllm-examples"
+description = "Runnable examples and live tests for anyllm providers"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+publish = false
+
+[dependencies]
+anyllm = { workspace = true, features = ["extract"] }
+anyllm-anthropic = { path = "../anyllm-anthropic" }
+anyllm-gemini = { path = "../anyllm-gemini" }
+anyllm-openai = { path = "../anyllm-openai" }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["rustls"] }
