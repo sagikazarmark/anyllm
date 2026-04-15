@@ -1,0 +1,8 @@
+{
+  "model": "text-embedding-3-small",
+  "inputs": [
+    "hello world",
+    "embedding fixtures"
+  ],
+  "dimensions": 32
+}

@@ -183,4 +183,102 @@ mod tests {
         let timeout = crate::error::conformance_map_timeout_transport_error();
         assert_error_fixture_eq(&timeout, &fixtures, "error_timeout.json");
     }
+
+    #[test]
+    fn embed_request_fixture_matches() {
+        use anyllm::EmbeddingRequest;
+        use anyllm_conformance::assert_embedding_request_fixture_eq;
+
+        let fixtures = fixtures();
+        let request = EmbeddingRequest::new("text-embedding-3-small")
+            .inputs(["hello world", "embedding fixtures"])
+            .dimensions(32);
+        assert_embedding_request_fixture_eq(&request, &fixtures, "embed_request.json");
+    }
+
+    #[test]
+    fn embed_response_fixture_matches() {
+        use anyllm::EmbeddingResponse;
+        use anyllm_conformance::{assert_embedding_response_fixture_eq, load_json_fixture};
+        use anyllm_openai_compat::{EmbeddingsResponse, from_embeddings_response};
+
+        let fixtures = fixtures();
+        let raw = load_json_fixture(&fixtures, "embed_response_raw.json");
+        let wire: EmbeddingsResponse = serde_json::from_value(raw).unwrap();
+        let response: EmbeddingResponse = from_embeddings_response(wire, |_, _| {}).unwrap();
+        assert_embedding_response_fixture_eq(&response, &fixtures, "embed_response_expected.json");
+    }
+
+    #[test]
+    fn embed_error_fixtures_match() {
+        use anyllm_conformance::assert_embedding_error_fixture_eq;
+
+        let fixtures = fixtures();
+
+        let auth = crate::error::conformance_map_http_error(
+            401,
+            &serde_json::json!({
+                "error": {
+                    "type": "invalid_request_error",
+                    "message": "Incorrect API key provided",
+                    "code": "invalid_api_key"
+                }
+            })
+            .to_string(),
+            None,
+            None,
+        );
+        assert_embedding_error_fixture_eq(&auth, &fixtures, "embed_error_auth.json");
+
+        let rate_limited = crate::error::conformance_map_http_error(
+            429,
+            &serde_json::json!({
+                "error": {"type": "rate_limit_error", "message": "Rate limit reached"}
+            })
+            .to_string(),
+            Some("req-openai-429".into()),
+            Some(std::time::Duration::from_secs(30)),
+        );
+        assert_embedding_error_fixture_eq(
+            &rate_limited,
+            &fixtures,
+            "embed_error_rate_limited.json",
+        );
+
+        let context = crate::error::conformance_map_http_error(
+            400,
+            &serde_json::json!({
+                "error": {
+                    "type": "invalid_request_error",
+                    "message": "This model's maximum context length is 8192 tokens"
+                }
+            })
+            .to_string(),
+            None,
+            None,
+        );
+        assert_embedding_error_fixture_eq(&context, &fixtures, "embed_error_context_length.json");
+
+        let model_not_found = crate::error::conformance_map_http_error(
+            404,
+            &serde_json::json!({
+                "error": {
+                    "type": "invalid_request_error",
+                    "message": "The model `text-embedding-9999` does not exist",
+                    "code": "model_not_found"
+                }
+            })
+            .to_string(),
+            None,
+            None,
+        );
+        assert_embedding_error_fixture_eq(
+            &model_not_found,
+            &fixtures,
+            "embed_error_model_not_found.json",
+        );
+
+        let timeout = crate::error::conformance_map_timeout_transport_error();
+        assert_embedding_error_fixture_eq(&timeout, &fixtures, "embed_error_timeout.json");
+    }
 }

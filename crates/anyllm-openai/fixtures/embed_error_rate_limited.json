@@ -1,0 +1,6 @@
+{
+  "type": "rate_limited",
+  "message": "Rate limit reached",
+  "retry_after_secs": 30.0,
+  "request_id": "req-openai-429"
+}
