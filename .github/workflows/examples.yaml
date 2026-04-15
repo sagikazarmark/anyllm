@@ -1,0 +1,118 @@
+name: Examples
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Provider to run examples against"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - anthropic
+          - gemini
+          - openai
+
+permissions:
+  contents: read
+
+jobs:
+  anthropic:
+    name: Anthropic
+    if: inputs.provider == 'all' || inputs.provider == 'anthropic'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROVIDER: anthropic
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Run provider_chat
+        run: cargo run -p anyllm-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
+
+      - name: Run provider_stream
+        run: cargo run -p anyllm-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
+
+      - name: Run provider_tools
+        run: cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
+
+      - name: Run provider_extract
+        run: cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents."
+
+      - name: Run record_replay
+        run: cargo run -p anyllm-examples --example record_replay -- "Summarize this failure briefly."
+
+  gemini:
+    name: Gemini
+    if: inputs.provider == 'all' || inputs.provider == 'gemini'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROVIDER: gemini
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Run provider_chat
+        run: cargo run -p anyllm-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
+
+      - name: Run provider_stream
+        run: cargo run -p anyllm-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
+
+      - name: Run provider_tools
+        run: cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
+
+      - name: Run provider_extract
+        run: cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents."
+
+      - name: Run record_replay
+        run: cargo run -p anyllm-examples --example record_replay -- "Summarize this failure briefly."
+
+      - name: Run provider_embedding
+        run: cargo run -p anyllm-examples --example provider_embedding -- "Rust makes ownership explicit." "Embedding models turn text into vectors."
+
+  openai:
+    name: OpenAI
+    if: inputs.provider == 'all' || inputs.provider == 'openai'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROVIDER: openai
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Run provider_chat
+        run: cargo run -p anyllm-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
+
+      - name: Run provider_stream
+        run: cargo run -p anyllm-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
+
+      - name: Run provider_tools
+        run: cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
+
+      - name: Run provider_extract
+        run: cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents."
+
+      - name: Run record_replay
+        run: cargo run -p anyllm-examples --example record_replay -- "Summarize this failure briefly."
+
+      - name: Run provider_embedding
+        run: cargo run -p anyllm-examples --example provider_embedding -- "Rust makes ownership explicit." "Embedding models turn text into vectors."
