@@ -272,6 +272,7 @@ impl ChatRequest {
     pub fn into_record_lossy(self) -> ChatRequestRecord {
         ChatRequestRecord {
             model: self.model,
+            system: self.system,
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
@@ -303,6 +304,9 @@ impl ChatRequest {
 pub struct ChatRequestRecord {
     /// Provider-specific model identifier.
     pub model: String,
+    /// Request-level system instructions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub system: Vec<SystemPrompt>,
     /// Ordered conversation history.
     pub messages: Vec<Message>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -363,6 +367,7 @@ impl ChatRequestRecord {
     pub fn from_request_lossy(request: &ChatRequest) -> Self {
         Self {
             model: request.model.clone(),
+            system: request.system.clone(),
             messages: request.messages.clone(),
             temperature: request.temperature,
             max_tokens: request.max_tokens,
@@ -388,7 +393,7 @@ impl ChatRequestRecord {
     pub fn into_chat_request_lossy(self) -> ChatRequest {
         ChatRequest {
             model: self.model,
-            system: Vec::new(),
+            system: self.system,
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
@@ -623,6 +628,7 @@ mod tests {
         let obj = value.as_object().unwrap();
         assert!(obj.contains_key("model"));
         assert!(obj.contains_key("messages"));
+        assert!(!obj.contains_key("system"));
         assert!(!obj.contains_key("temperature"));
         assert!(!obj.contains_key("max_tokens"));
         assert!(!obj.contains_key("top_p"));
@@ -821,5 +827,45 @@ mod tests {
         let cloned = req.clone();
         assert_eq!(cloned.system.len(), 1);
         assert_eq!(cloned.system[0].content, "X");
+    }
+
+    #[test]
+    fn chat_request_record_preserves_system() {
+        let mut req = ChatRequest::new("claude-sonnet-4-5");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+
+        let record = ChatRequestRecord::from(&req);
+        assert_eq!(record.system.len(), 2);
+        assert_eq!(record.system[0].content, "A");
+        assert_eq!(record.system[1].content, "B");
+
+        let rebuilt = record.clone().into_chat_request_lossy();
+        assert_eq!(rebuilt.system.len(), 2);
+        assert_eq!(rebuilt.system[0].content, "A");
+    }
+
+    #[test]
+    fn chat_request_record_serde_skips_empty_system() {
+        let req = ChatRequest::new("gpt-4o");
+        let record = ChatRequestRecord::from(&req);
+        let json = serde_json::to_value(&record).unwrap();
+        let obj = json.as_object().unwrap();
+        assert!(
+            !obj.contains_key("system"),
+            "empty system should be skipped, got {obj:?}"
+        );
+    }
+
+    #[test]
+    fn chat_request_record_serde_round_trip_with_system() {
+        let mut req = ChatRequest::new("claude-sonnet-4-5");
+        req.system.push(SystemPrompt::new("Preamble"));
+
+        let record = ChatRequestRecord::from(&req);
+        let json = serde_json::to_string(&record).unwrap();
+        let rebuilt: ChatRequestRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(rebuilt.system.len(), 1);
+        assert_eq!(rebuilt.system[0].content, "Preamble");
     }
 }

@@ -64,6 +64,20 @@ impl SystemPrompt {
     }
 }
 
+impl PartialEq for SystemPrompt {
+    /// Compares system prompts by portable `content` only.
+    ///
+    /// Typed entries in [`SystemOptions`] are type-erased and therefore not
+    /// portably comparable, mirroring how
+    /// [`RequestOptions`](crate::RequestOptions) is excluded from
+    /// [`ChatRequestRecord`](crate::ChatRequestRecord) equality.
+    fn eq(&self, other: &Self) -> bool {
+        self.content == other.content
+    }
+}
+
+impl Eq for SystemPrompt {}
+
 impl From<&str> for SystemPrompt {
     fn from(value: &str) -> Self {
         Self::new(value)
