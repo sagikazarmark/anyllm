@@ -16,6 +16,11 @@ use std::sync::Arc;
 
 use crate::{CapabilitySupport, ProviderIdentity, RequestOptions, ResponseMetadata, Result, Usage};
 
+#[cfg(any(test, feature = "mock"))]
+mod mock;
+#[cfg(any(test, feature = "mock"))]
+pub use mock::MockEmbeddingProvider;
+
 /// A provider-agnostic embedding request.
 ///
 /// Text-only and batch-oriented. Single-input callers should prefer

@@ -12,6 +12,8 @@ mod content;
 mod extract;
 mod fallback;
 mod message;
+#[cfg(any(test, feature = "mock"))]
+mod mock;
 mod request;
 mod response;
 mod retry;
@@ -31,7 +33,14 @@ pub use message::{
     AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
     ToolResultContent, UserContent, UserMessageRef,
 };
-pub use request::{ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat};
+#[cfg(any(test, feature = "mock"))]
+pub use mock::{
+    ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
+    MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+};
+pub use request::{
+    ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat,
+};
 pub use response::{ChatResponse, ChatResponseRecord, FinishReason};
 pub use retry::{RetryPolicy, RetryingChatProvider};
 pub use stream::{

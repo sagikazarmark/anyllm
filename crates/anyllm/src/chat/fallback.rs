@@ -521,12 +521,10 @@ mod tests {
     #[cfg(feature = "extract")]
     #[test]
     fn default_policy_rejects_extract_errors() {
-        let error = Error::Extract(Box::new(
-            crate::ExtractError::MissingStructuredText {
-                mode: crate::ExtractionMode::Native,
-                provider: "mock".into(),
-            },
-        ));
+        let error = Error::Extract(Box::new(crate::ExtractError::MissingStructuredText {
+            mode: crate::ExtractionMode::Native,
+            provider: "mock".into(),
+        }));
 
         assert!(!should_fallback(&error));
     }

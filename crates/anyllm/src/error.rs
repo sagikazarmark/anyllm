@@ -917,12 +917,10 @@ mod tests {
     #[cfg(feature = "extract")]
     #[test]
     fn extract_errors_are_non_retryable_and_expose_source() {
-        let err = Error::Extract(Box::new(
-            crate::ExtractError::MissingStructuredText {
-                mode: crate::ExtractionMode::Native,
-                provider: "mock".into(),
-            },
-        ));
+        let err = Error::Extract(Box::new(crate::ExtractError::MissingStructuredText {
+            mode: crate::ExtractionMode::Native,
+            provider: "mock".into(),
+        }));
         assert!(!err.is_retryable());
         assert!(err.to_string().contains("extraction error"));
         assert!(std::error::Error::source(&err).is_some());

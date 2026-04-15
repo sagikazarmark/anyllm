@@ -35,11 +35,6 @@ mod chat;
 mod embedding;
 mod error;
 mod identity;
-/// Mock providers for testing. Enable the `mock` feature to use these types
-/// as a library consumer. These types are not covered by the semver stability
-/// guarantee.
-#[cfg(any(test, feature = "mock"))]
-mod mock;
 mod options;
 mod usage;
 mod utils;
@@ -54,24 +49,26 @@ pub use chat::{
     StreamCompleteness, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolMessageRef,
     ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
 };
-#[cfg(feature = "tracing")]
-pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
+#[cfg(any(test, feature = "mock"))]
+pub use chat::{
+    ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
+    MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+};
 #[cfg(feature = "extract")]
 pub use chat::{
     ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
     ExtractionRequest, Extractor,
 };
+#[cfg(feature = "tracing")]
+pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
+#[cfg(any(test, feature = "mock"))]
+pub use embedding::MockEmbeddingProvider;
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
     EmbeddingRequest, EmbeddingResponse,
 };
 pub use error::{Error, ErrorLog, Result, SerializationError};
 pub use identity::ProviderIdentity;
-#[cfg(any(test, feature = "mock"))]
-pub use mock::{
-    ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder, MockResponse,
-    MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
-};
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
 pub use usage::Usage;
 
