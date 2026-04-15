@@ -36,7 +36,6 @@ mod embedding;
 mod error;
 #[cfg(feature = "extract")]
 mod extract;
-mod fallback;
 mod identity;
 /// Mock providers for testing. Enable the `mock` feature to use these types
 /// as a library consumer. These types are not covered by the semver stability
@@ -55,11 +54,12 @@ pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider
 pub use chat::{
     AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
     ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream,
-    ChatStreamExt, CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FinishReason,
-    ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall, ReasoningConfig,
-    ReasoningEffort, ResponseFormat, RetryPolicy, RetryingChatProvider, SingleResponseStream,
-    StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent, Tool, ToolCallRef,
-    ToolChoice, ToolMessageRef, ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
+    ChatStreamExt, CollectedResponse, ContentBlock, ContentPart, DynChatProvider,
+    FallbackChatProvider, FinishReason, ImageBlockRef, ImagePartRef, ImageSource, Message,
+    OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat, RetryPolicy,
+    RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector,
+    StreamCompleteness, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolMessageRef,
+    ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
 };
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
@@ -71,7 +71,6 @@ pub use extract::{
     ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
     ExtractionRequest, Extractor,
 };
-pub use fallback::FallbackChatProvider;
 pub use identity::ProviderIdentity;
 #[cfg(any(test, feature = "mock"))]
 pub use mock::{

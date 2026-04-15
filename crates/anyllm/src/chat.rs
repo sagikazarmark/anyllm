@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{ProviderIdentity, Result};
 
 mod content;
+mod fallback;
 mod message;
 mod request;
 mod response;
@@ -16,6 +17,7 @@ mod stream;
 mod tool;
 
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
+pub use fallback::FallbackChatProvider;
 pub use message::{
     AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
     ToolResultContent, UserContent, UserMessageRef,
