@@ -23,8 +23,8 @@ pub use error::{
 pub use options::{OpenAIReasoningEffort, RequestOptions};
 pub use streaming::{SseState, process_sse_data, sse_to_stream};
 pub use wire::{
-    ChatCompletionRequest, ChatCompletionResponse, from_api_response, parse_finish_reason,
-    to_chat_completion_request,
+    ApiMessage, ChatCompletionRequest, ChatCompletionResponse, from_api_response,
+    parse_finish_reason, to_chat_completion_request,
 };
 
 /// A generic OpenAI-compatible chat provider.

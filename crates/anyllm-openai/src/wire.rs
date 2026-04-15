@@ -3,8 +3,8 @@ use anyllm::{ChatRequest, ChatResponse, Result};
 use crate::{ChatRequestOptions, ChatResponseMetadata};
 pub(crate) use anyllm_openai_compat::{ChatCompletionRequest, ChatCompletionResponse};
 use anyllm_openai_compat::{
-    RequestOptions as CompatRequestOptions, from_api_response as compat_from_api_response,
-    to_chat_completion_request,
+    ApiMessage, RequestOptions as CompatRequestOptions,
+    from_api_response as compat_from_api_response, to_chat_completion_request,
 };
 
 /// Convert an anyllm `ChatRequest` to an OpenAI `ChatCompletionRequest`.
@@ -19,7 +19,32 @@ pub(crate) fn to_api_request(request: &ChatRequest, stream: bool) -> Result<Chat
         compat_options.reasoning_effort = options.reasoning_effort;
     }
 
-    to_chat_completion_request(request, stream, &compat_options)
+    let mut api_request = to_chat_completion_request(request, stream, &compat_options)?;
+
+    // Emit req.system as one role: "system" wire message per prompt, in order,
+    // before any req.messages entries. Empty-content prompts are skipped so
+    // we never put empty system messages on the wire. Typed SystemOptions
+    // entries are silently ignored — no OpenAI-specific options are defined
+    // in V1.
+    let mut system_messages: Vec<ApiMessage> = Vec::with_capacity(request.system.len());
+    for prompt in &request.system {
+        if prompt.content.is_empty() {
+            continue;
+        }
+        system_messages.push(ApiMessage {
+            role: "system".to_string(),
+            content: Some(serde_json::json!(prompt.content)),
+            name: None,
+            tool_calls: None,
+            tool_call_id: None,
+        });
+    }
+    if !system_messages.is_empty() {
+        system_messages.append(&mut api_request.messages);
+        api_request.messages = system_messages;
+    }
+
+    Ok(api_request)
 }
 
 /// Convert an OpenAI `ChatCompletionResponse` to an anyllm `ChatResponse`.
@@ -657,5 +682,28 @@ mod tests {
             parse_finish_reason("something_new"),
             FinishReason::Other("something_new".into())
         );
+    }
+
+    #[test]
+    fn req_system_emits_system_messages_at_front() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gpt-4o").user("hi");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+
+        let api_req = to_api_request(&req, false).unwrap();
+        assert_eq!(api_req.messages[0].role, "system");
+        assert_eq!(api_req.messages[0].content, Some(json!("A")));
+        assert_eq!(api_req.messages[1].role, "system");
+        assert_eq!(api_req.messages[1].content, Some(json!("B")));
+        assert_eq!(api_req.messages[2].role, "user");
+    }
+
+    #[test]
+    fn req_system_empty_emits_no_system_messages() {
+        let req = ChatRequest::new("gpt-4o").user("hi");
+        let api_req = to_api_request(&req, false).unwrap();
+        assert_eq!(api_req.messages[0].role, "user");
     }
 }
