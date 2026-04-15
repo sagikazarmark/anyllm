@@ -1,6 +1,7 @@
 use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
 use std::{sync::Arc, time::Duration};
 
+mod cache_control;
 mod chat;
 #[cfg(test)]
 mod conformance_tests;
@@ -9,6 +10,7 @@ mod options;
 mod streaming;
 mod wire;
 
+pub use cache_control::CacheControl;
 pub use options::ChatRequestOptions;
 
 #[cfg(feature = "http-tracing")]
