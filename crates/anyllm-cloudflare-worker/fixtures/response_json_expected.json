@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"summary\":\"Cloudflare JSON mode works.\",\"token\":\"cf-json-ok\"}"
+    }
+  ],
+  "finish_reason": "stop"
+}

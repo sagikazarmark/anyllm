@@ -1,0 +1,52 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are concise."
+    },
+    {
+      "role": "user",
+      "content": "Find rust docs"
+    }
+  ],
+  "max_tokens": 64,
+  "temperature": 0.20000000298023224,
+  "top_p": 0.8999999761581421,
+  "seed": 42,
+  "frequency_penalty": 0.10000000149011612,
+  "presence_penalty": 0.20000000298023224,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "search",
+        "description": "Search docs",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "q"
+          ]
+        }
+      }
+    }
+  ],
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "type": "object",
+      "properties": {
+        "answer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "answer"
+      ]
+    }
+  }
+}

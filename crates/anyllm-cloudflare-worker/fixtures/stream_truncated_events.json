@@ -1,0 +1,30 @@
+[
+  {
+    "event": "response_start"
+  },
+  {
+    "event": "block_start",
+    "index": 0,
+    "block_type": "text"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": "Hello"
+  },
+  {
+    "event": "text_delta",
+    "index": 0,
+    "text": " world"
+  },
+  {
+    "event": "block_stop",
+    "index": 0
+  },
+  {
+    "error": {
+      "type": "stream",
+      "message": "SSE stream ended before [DONE]"
+    }
+  }
+]
