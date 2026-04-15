@@ -4,6 +4,7 @@ use std::{sync::Arc, time::Duration};
 mod chat;
 #[cfg(test)]
 mod conformance_tests;
+mod embedding;
 mod error;
 mod options;
 mod streaming;
@@ -11,7 +12,7 @@ mod wire;
 
 pub use anyllm_openai_compat::OpenAIReasoningEffort;
 use anyllm_openai_compat::TransportConfig;
-pub use options::{ChatRequestOptions, ChatResponseMetadata};
+pub use options::{ChatRequestOptions, ChatResponseMetadata, EmbeddingRequestOptions};
 
 #[cfg(feature = "http-tracing")]
 type HttpClient = reqwest_middleware::ClientWithMiddleware;

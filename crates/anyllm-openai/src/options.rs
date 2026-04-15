@@ -25,3 +25,10 @@ pub struct ChatResponseMetadata {
 impl ResponseMetadataType for ChatResponseMetadata {
     const KEY: &'static str = "openai";
 }
+
+/// Per-request options applied to OpenAI `/v1/embeddings` calls.
+#[derive(Debug, Clone, Default)]
+pub struct EmbeddingRequestOptions {
+    /// `user` abuse-tracking identifier forwarded to OpenAI.
+    pub user: Option<String>,
+}
