@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, DynChatProvider,
-    Message, ProviderIdentity, ResponseFormat, Tool, ToolChoice, UserContent,
+    Message, ProviderIdentity, ResponseFormat, SystemPrompt, Tool, ToolChoice, UserContent,
 };
 
 /// Extension trait for providers that support structured data extraction.
@@ -78,6 +78,8 @@ pub struct ExtractionMetadata {
 pub struct ExtractionRequest {
     /// Provider-specific model identifier
     pub model: String,
+    /// Request-level system instructions (empty when no system prompt is set).
+    pub system: Vec<SystemPrompt>,
     /// Conversation messages used for the extraction pass
     pub messages: Vec<Message>,
 }
@@ -88,6 +90,7 @@ impl ExtractionRequest {
     pub fn new(model: impl Into<String>) -> Self {
         Self {
             model: model.into(),
+            system: Vec::new(),
             messages: Vec::new(),
         }
     }
@@ -106,10 +109,11 @@ impl ExtractionRequest {
         self
     }
 
-    /// Shorthand for `.message(Message::system(content))`.
+    /// Append a system prompt. Accepts `&str`, `String`, or [`SystemPrompt`].
     #[must_use]
-    pub fn system(self, content: impl Into<String>) -> Self {
-        self.message(Message::system(content))
+    pub fn system(mut self, prompt: impl Into<SystemPrompt>) -> Self {
+        self.system.push(prompt.into());
+        self
     }
 
     /// Shorthand for `.message(Message::user(content))`.
@@ -129,6 +133,7 @@ impl From<&ChatRequest> for ExtractionRequest {
     fn from(request: &ChatRequest) -> Self {
         Self {
             model: request.model.clone(),
+            system: request.system.clone(),
             messages: request.messages.clone(),
         }
     }
@@ -136,7 +141,9 @@ impl From<&ChatRequest> for ExtractionRequest {
 
 impl From<ExtractionRequest> for ChatRequest {
     fn from(request: ExtractionRequest) -> Self {
-        ChatRequest::new(request.model).messages(request.messages)
+        let mut req = ChatRequest::new(request.model).messages(request.messages);
+        req.system = request.system;
+        req
     }
 }
 
@@ -1296,11 +1303,12 @@ mod tests {
             .message(Message::tool_result("call_1", "lookup_review", "ok"));
 
         assert_eq!(request.model, "gpt-4o");
-        assert_eq!(request.messages.len(), 4);
-        assert!(matches!(request.messages[0], Message::System { .. }));
-        assert!(matches!(request.messages[1], Message::User { .. }));
-        assert!(matches!(request.messages[2], Message::Assistant { .. }));
-        assert!(matches!(request.messages[3], Message::Tool { .. }));
+        assert_eq!(request.system.len(), 1);
+        assert_eq!(request.system[0].content, "You are a reviewer");
+        assert_eq!(request.messages.len(), 3);
+        assert!(matches!(request.messages[0], Message::User { .. }));
+        assert!(matches!(request.messages[1], Message::Assistant { .. }));
+        assert!(matches!(request.messages[2], Message::Tool { .. }));
     }
 
     #[tokio::test]
@@ -1368,6 +1376,7 @@ mod tests {
                 &provider,
                 ExtractionRequest {
                     model: "gpt-4o".into(),
+                    system: Vec::new(),
                     messages: vec![Message::user("Review Dune")],
                 },
             )
@@ -1410,6 +1419,7 @@ mod tests {
                 &provider,
                 ExtractionRequest {
                     model: "claude".into(),
+                    system: Vec::new(),
                     messages: vec![Message::user("Review Heat")],
                 },
             )

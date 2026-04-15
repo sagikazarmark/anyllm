@@ -2,24 +2,6 @@ use anyllm::{ContentBlock, ContentPart, ExtraMap, ImageSource, Message};
 use serde_json::json;
 
 #[test]
-fn system_message_serializes_with_extensions_field() {
-    let message = Message::system("You are helpful")
-        .with_extension("cache_control", json!({"type": "ephemeral"}));
-
-    let value = serde_json::to_value(&message).unwrap();
-    assert_eq!(
-        value,
-        json!({
-            "role": "system",
-            "content": "You are helpful",
-            "extensions": {
-                "cache_control": {"type": "ephemeral"}
-            }
-        })
-    );
-}
-
-#[test]
 fn user_multimodal_message_serializes_with_name_and_parts() {
     let message = Message::User {
         content: anyllm::UserContent::Parts(vec![
@@ -111,7 +93,7 @@ fn tool_message_serializes_is_error_only_when_present() {
 #[test]
 fn message_deserialize_accepts_legacy_extra_field() {
     let value = json!({
-        "role": "system",
+        "role": "user",
         "content": "hello",
         "extra": {
             "cache_control": {"type": "ephemeral"}
@@ -122,7 +104,7 @@ fn message_deserialize_accepts_legacy_extra_field() {
     assert_eq!(
         serde_json::to_value(&message).unwrap(),
         json!({
-            "role": "system",
+            "role": "user",
             "content": "hello",
             "extensions": {
                 "cache_control": {"type": "ephemeral"}
@@ -134,7 +116,7 @@ fn message_deserialize_accepts_legacy_extra_field() {
 #[test]
 fn message_deserialize_promotes_unknown_fields_into_extensions() {
     let value = json!({
-        "role": "system",
+        "role": "user",
         "content": "hello",
         "cache_control": {"type": "ephemeral"},
         "priority": 5
@@ -143,7 +125,7 @@ fn message_deserialize_promotes_unknown_fields_into_extensions() {
     let message: Message = serde_json::from_value(value).unwrap();
 
     match message {
-        Message::System { extensions, .. } => {
+        Message::User { extensions, .. } => {
             assert_eq!(
                 extensions,
                 Some(ExtraMap::from_iter([
@@ -152,6 +134,6 @@ fn message_deserialize_promotes_unknown_fields_into_extensions() {
                 ]))
             );
         }
-        other => panic!("expected system message, got {other:?}"),
+        other => panic!("expected user message, got {other:?}"),
     }
 }

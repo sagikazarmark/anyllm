@@ -224,23 +224,6 @@ impl TryFrom<&ChatRequest> for CreateMessageRequest {
 
         for msg in &request.messages {
             match msg {
-                anyllm::Message::System {
-                    content,
-                    extensions,
-                } => {
-                    flush_tool_results(&mut api_messages, &mut pending_tool_results);
-                    let mut block = SystemBlock {
-                        block_type: "text".to_string(),
-                        text: content.clone(),
-                        cache_control: None,
-                    };
-                    if let Some(ext) = extensions
-                        && let Some(cc) = ext.get("cache_control")
-                    {
-                        block.cache_control = Some(cc.clone());
-                    }
-                    system_blocks.push(block);
-                }
                 anyllm::Message::User { content, .. } => {
                     flush_tool_results(&mut api_messages, &mut pending_tool_results);
                     let api_content = match content {
@@ -913,8 +896,8 @@ mod tests {
     #[test]
     fn hoists_multiple_system_messages() {
         let req = anyllm::ChatRequest::new("claude-sonnet-4-20250514")
-            .message(anyllm::Message::system("First"))
-            .message(anyllm::Message::system("Second"))
+            .system("First")
+            .system("Second")
             .message(anyllm::Message::user("Hi"));
 
         let api_req = try_from_request(&req).unwrap();
@@ -928,9 +911,9 @@ mod tests {
 
     #[test]
     fn system_message_with_cache_control() {
-        let req = anyllm::ChatRequest::new("claude-sonnet-4-20250514").message(
-            anyllm::Message::system("Cached system")
-                .with_extension("cache_control", json!({"type": "ephemeral"})),
+        use crate::CacheControl;
+        let req = anyllm::ChatRequest::new("claude-sonnet-4-20250514").system(
+            anyllm::SystemPrompt::new("Cached system").with_option(CacheControl::ephemeral()),
         );
 
         let api_req = try_from_request(&req).unwrap();

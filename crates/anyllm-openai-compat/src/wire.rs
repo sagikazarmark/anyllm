@@ -436,13 +436,6 @@ fn inject_strict_additional_properties(value: &mut serde_json::Value) {
 
 pub fn convert_message(message: &Message) -> anyllm::Result<ApiMessage> {
     match message {
-        Message::System { content, .. } => Ok(ApiMessage {
-            role: ROLE_SYSTEM.to_string(),
-            content: Some(serde_json::json!(content)),
-            name: None,
-            tool_calls: None,
-            tool_call_id: None,
-        }),
         Message::User { content, name, .. } => {
             let api_content = match content {
                 UserContent::Text(text) => serde_json::json!(text),
@@ -821,8 +814,7 @@ mod tests {
         req.system.push(SystemPrompt::new("A"));
         req.system.push(SystemPrompt::new("B"));
 
-        let api_req =
-            to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
+        let api_req = to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
         assert_eq!(api_req.messages[0].role, "system");
         assert_eq!(api_req.messages[0].content, Some(json!("A")));
         assert_eq!(api_req.messages[1].role, "system");
@@ -833,8 +825,7 @@ mod tests {
     #[test]
     fn req_system_empty_emits_no_system_messages() {
         let req = ChatRequest::new("gpt-4o-compat").user("hi");
-        let api_req =
-            to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
+        let api_req = to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
         assert_eq!(api_req.messages[0].role, "user");
     }
 
@@ -844,8 +835,7 @@ mod tests {
         let mut req = ChatRequest::new("gpt-4o-compat").user("hi");
         req.system.push(SystemPrompt::new(""));
 
-        let api_req =
-            to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
+        let api_req = to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
         // Empty-content prompt should NOT produce a system wire message
         assert_eq!(api_req.messages[0].role, "user");
     }

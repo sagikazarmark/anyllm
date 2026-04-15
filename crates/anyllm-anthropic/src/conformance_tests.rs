@@ -21,9 +21,9 @@ mod tests {
     fn request_fixture_matches() {
         let fixtures = fixtures();
         let request = ChatRequest::new("claude-sonnet-4-20250514")
-            .message(
-                Message::system("You are a careful assistant.")
-                    .with_extension("cache_control", json!({"type": "ephemeral"})),
+            .system(
+                anyllm::SystemPrompt::new("You are a careful assistant.")
+                    .with_option(crate::CacheControl::ephemeral()),
             )
             .message(Message::user("Find the answer"))
             .tools(vec![

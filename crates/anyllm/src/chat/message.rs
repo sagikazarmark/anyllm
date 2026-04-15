@@ -18,14 +18,6 @@ const DISPLAY_MAX_BYTES: usize = 50;
 #[serde(tag = "role", rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum Message {
-    /// System instruction message
-    System {
-        /// System prompt text.
-        content: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        /// Provider-specific JSON extensions.
-        extensions: Option<ExtraMap>,
-    },
     /// User input message
     User {
         /// User text or multimodal content.
@@ -68,15 +60,6 @@ pub enum Message {
 }
 
 impl Message {
-    /// Create a system message from plain text.
-    #[must_use]
-    pub fn system(content: impl Into<String>) -> Self {
-        Message::System {
-            content: content.into(),
-            extensions: None,
-        }
-    }
-
     /// Create a user message from plain text or multimodal parts.
     ///
     /// # Examples
@@ -164,7 +147,6 @@ impl Message {
     #[must_use]
     pub fn with_extension(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
         let extensions = match &mut self {
-            Message::System { extensions, .. } => extensions,
             Message::User { extensions, .. } => extensions,
             Message::Assistant { extensions, .. } => extensions,
             Message::Tool { extensions, .. } => extensions,
@@ -179,19 +161,9 @@ impl Message {
     #[must_use]
     pub fn role(&self) -> &'static str {
         match self {
-            Message::System { .. } => "system",
             Message::User { .. } => "user",
             Message::Assistant { .. } => "assistant",
             Message::Tool { .. } => "tool",
-        }
-    }
-
-    /// Borrow the system prompt text if this is a system message.
-    #[must_use]
-    pub fn as_system(&self) -> Option<&str> {
-        match self {
-            Message::System { content, .. } => Some(content),
-            _ => None,
         }
     }
 
@@ -254,8 +226,7 @@ impl Message {
     #[must_use]
     pub fn extensions(&self) -> Option<&ExtraMap> {
         match self {
-            Message::System { extensions, .. }
-            | Message::User { extensions, .. }
+            Message::User { extensions, .. }
             | Message::Assistant { extensions, .. }
             | Message::Tool { extensions, .. } => extensions.as_ref(),
         }
@@ -311,10 +282,6 @@ pub struct ToolMessageRef<'a> {
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Message::System { content, .. } => {
-                f.write_str("system: ")?;
-                write_truncated(f, content, DISPLAY_MAX_BYTES)
-            }
             Message::User { content, .. } => {
                 f.write_str("user: ")?;
                 match content {
@@ -386,14 +353,6 @@ impl<'de> Visitor<'de> for MessageVisitor {
 
         let role = MessageRole::from_value::<A::Error>(fields.role.take())?;
         match role {
-            MessageRole::System => Ok(Message::System {
-                content: required_string_field_in::<A::Error>(
-                    fields.content.take().as_deref().map(raw_to_value),
-                    "content",
-                    "system message",
-                )?,
-                extensions: fields.take_extensions(),
-            }),
             MessageRole::User => Ok(Message::User {
                 content: deserialize_user_content(
                     fields
@@ -449,7 +408,6 @@ impl<'de> Visitor<'de> for MessageVisitor {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MessageRole {
-    System,
     User,
     Assistant,
     Tool,
@@ -458,7 +416,6 @@ enum MessageRole {
 impl MessageRole {
     fn from_value<E: de::Error>(value: Option<serde_json::Value>) -> Result<Self, E> {
         match required_string_field(value, "role")?.as_str() {
-            "system" => Ok(Self::System),
             "user" => Ok(Self::User),
             "assistant" => Ok(Self::Assistant),
             "tool" => Ok(Self::Tool),
@@ -880,10 +837,6 @@ mod tests {
 
     #[test]
     fn message_accessors_expose_borrowed_views() {
-        let system = Message::system("sys").with_extension("trace", json!(1));
-        assert_eq!(system.as_system(), Some("sys"));
-        assert_eq!(system.extensions().unwrap().get("trace"), Some(&json!(1)));
-
         let user = Message::User {
             content: UserContent::Parts(vec![ContentPart::text("hello")]),
             name: Some("alice".into()),
@@ -915,7 +868,6 @@ mod tests {
     #[test]
     fn message_with_extension_works_on_all_variants() {
         let cases = [
-            Message::system("s").with_extension("k", json!("v")),
             Message::user("u").with_extension("k", json!("v")),
             Message::assistant("a").with_extension("k", json!("v")),
             Message::tool_result("id", "my_tool", "r").with_extension("k", json!("v")),
@@ -1031,39 +983,39 @@ mod tests {
     #[test]
     fn message_deserialize_preserves_extensions() {
         let json = json!({
-            "role": "system",
+            "role": "user",
             "content": "test",
             "cache_control": {"type": "ephemeral"}
         });
         let msg: Message = serde_json::from_value(json).unwrap();
         match msg {
-            Message::System { extensions, .. } => {
+            Message::User { extensions, .. } => {
                 let extensions = extensions.unwrap();
                 assert_eq!(
                     extensions.get("cache_control").unwrap(),
                     &json!({"type": "ephemeral"})
                 );
             }
-            other => panic!("expected System, got {other:?}"),
+            other => panic!("expected User, got {other:?}"),
         }
     }
 
     #[test]
     fn message_deserialize_accepts_legacy_extra_field() {
         let json = json!({
-            "role": "system",
+            "role": "user",
             "content": "test",
             "extra": {"cache_control": {"type": "ephemeral"}}
         });
         let msg: Message = serde_json::from_value(json).unwrap();
         match msg {
-            Message::System { extensions, .. } => {
+            Message::User { extensions, .. } => {
                 assert_eq!(
                     extensions.unwrap().get("cache_control"),
                     Some(&json!({"type": "ephemeral"}))
                 );
             }
-            other => panic!("expected System, got {other:?}"),
+            other => panic!("expected User, got {other:?}"),
         }
     }
 
@@ -1149,7 +1101,7 @@ mod tests {
     #[test]
     fn message_deserialize_rejects_duplicate_known_field() {
         let err = serde_json::from_str::<Message>(
-            r#"{"role":"system","content":"first","content":"second"}"#,
+            r#"{"role":"user","content":"first","content":"second"}"#,
         )
         .unwrap_err();
 
@@ -1159,7 +1111,7 @@ mod tests {
     #[test]
     fn message_deserialize_prefers_explicit_extensions_over_implicit_unknown_fields() {
         let msg: Message = serde_json::from_value(json!({
-            "role": "system",
+            "role": "user",
             "content": "test",
             "extensions": {"cache_control": {"type": "ephemeral"}},
             "trace_id": "ignored-when-extensions-present"
@@ -1167,7 +1119,7 @@ mod tests {
         .unwrap();
 
         match msg {
-            Message::System { extensions, .. } => {
+            Message::User { extensions, .. } => {
                 let extensions = extensions.unwrap();
                 assert_eq!(extensions.len(), 1);
                 assert_eq!(
@@ -1176,7 +1128,7 @@ mod tests {
                 );
                 assert_eq!(extensions.get("trace_id"), None);
             }
-            other => panic!("expected System, got {other:?}"),
+            other => panic!("expected User, got {other:?}"),
         }
     }
 
@@ -1263,5 +1215,20 @@ mod tests {
                 ..
             } if parts == vec![ContentPart::text("look")]
         ));
+    }
+
+    #[test]
+    fn message_role_parser_rejects_system() {
+        assert!(MessageRole::from_value::<serde_json::Error>(Some(json!("system"))).is_err());
+    }
+
+    #[test]
+    fn message_deserialize_rejects_system_role() {
+        let json = r#"{"role":"system","content":"X"}"#;
+        let result: Result<Message, _> = serde_json::from_str(json);
+        assert!(
+            result.is_err(),
+            "Message deserialization should reject role: system, got {result:?}"
+        );
     }
 }

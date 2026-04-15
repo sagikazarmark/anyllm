@@ -1,13 +1,12 @@
 //! Wire types and conversions for the Gemini `generateContent` API.
 //!
 //! Gemini exposes a single `systemInstruction` field on the wire, so all
-//! `req.system` entries (and legacy `Message::System` entries) are joined
-//! with `"\n\n"` into one text part. Typed [`SystemOptions`] entries
-//! (e.g. `anyllm_anthropic::CacheControl`) are dropped when routing to
-//! Gemini — per-block cache hints are not part of `generateContent`.
-//! Gemini's caching is exposed through a separate `cachedContent` API,
-//! which is reached through [`crate::ChatRequestOptions`], not through
-//! this field.
+//! `req.system` entries are joined with `"\n\n"` into one text part.
+//! Typed [`SystemOptions`] entries (e.g. `anyllm_anthropic::CacheControl`)
+//! are dropped when routing to Gemini — per-block cache hints are not part
+//! of `generateContent`. Gemini's caching is exposed through a separate
+//! `cachedContent` API, which is reached through [`crate::ChatRequestOptions`],
+//! not through this field.
 //!
 //! [`SystemOptions`]: anyllm::SystemOptions
 
@@ -241,14 +240,12 @@ pub(crate) fn to_api_request(request: &ChatRequest) -> Result<GenerateContentReq
     let provider_options = request.option::<ChatRequestOptions>();
     let all_messages = &request.messages;
 
-    // Gemini has a single `systemInstruction` field. Collect text from
-    // `req.system` first (portable carrier), then any legacy
-    // `Message::System` entries, joining with "\n\n" into one text part.
-    // Typed `SystemOptions` are dropped — see module docs.
-    let system_instruction =
-        join_system_texts(&request.system, all_messages).map(|text| SystemContent {
-            parts: vec![RequestPart::Text { text }],
-        });
+    // Gemini has a single `systemInstruction` field. Join every `req.system`
+    // entry with "\n\n" into one text part. Typed `SystemOptions` are
+    // dropped — see module docs.
+    let system_instruction = join_system_texts(&request.system).map(|text| SystemContent {
+        parts: vec![RequestPart::Text { text }],
+    });
 
     // Convert non-system messages to Gemini Content objects.
     let mut raw_contents: Vec<Content> = Vec::with_capacity(all_messages.len());
@@ -337,9 +334,6 @@ pub(crate) fn to_api_request(request: &ChatRequest) -> Result<GenerateContentReq
 
 fn push_message_content(raw_contents: &mut Vec<Content>, msg: &Message) -> Result<()> {
     match msg {
-        Message::System { .. } => {
-            // Handled above as system_instruction.
-        }
         Message::User { content, .. } => {
             let parts = convert_user_content(content)?;
             raw_contents.push(Content {
@@ -503,21 +497,15 @@ fn convert_assistant_content(content: &[ContentBlock]) -> Result<Vec<RequestPart
     Ok(parts)
 }
 
-/// Join every system-prompt text carrier into a single string.
+/// Join every `req.system` entry into a single string.
 ///
-/// `req.system` entries come first (the portable carrier), followed by any
-/// legacy `Message::System` entries in `messages`. Segments are separated
-/// by `"\n\n"`. Empty segments are filtered out so they don't leak onto
-/// the wire as stray separators. Returns `None` when no non-empty segments
-/// are present across either carrier.
-fn join_system_texts(system: &[anyllm::SystemPrompt], messages: &[Message]) -> Option<String> {
+/// Segments are separated by `"\n\n"`. Empty segments are filtered out so
+/// they don't leak onto the wire as stray separators. Returns `None` when
+/// no non-empty segments are present.
+fn join_system_texts(system: &[anyllm::SystemPrompt]) -> Option<String> {
     let segments: Vec<&str> = system
         .iter()
         .map(|prompt| prompt.content.as_str())
-        .chain(messages.iter().filter_map(|message| match message {
-            Message::System { content, .. } => Some(content.as_str()),
-            _ => None,
-        }))
         .filter(|s| !s.is_empty())
         .collect();
 
@@ -940,14 +928,8 @@ mod tests {
     #[test]
     fn concatenates_multiple_system_messages() {
         let req = ChatRequest::new("gemini-2.0-flash")
-            .message(Message::System {
-                content: "First instruction.".to_string(),
-                extensions: None,
-            })
-            .message(Message::System {
-                content: "Second instruction.".to_string(),
-                extensions: None,
-            })
+            .system("First instruction.")
+            .system("Second instruction.")
             .message(Message::user("Hi"));
 
         let api_req = to_api_request(&req).unwrap();
@@ -1835,29 +1817,6 @@ mod tests {
         let req = ChatRequest::new("gemini-1.5-pro").user("hi");
         let api_req = to_api_request(&req).unwrap();
         assert!(api_req.system_instruction.is_none());
-    }
-
-    #[test]
-    fn req_system_prepended_before_legacy_message_system() {
-        use anyllm::SystemPrompt;
-
-        let mut req = ChatRequest::new("gemini-1.5-pro")
-            .message(Message::System {
-                content: "legacy".to_string(),
-                extensions: None,
-            })
-            .user("hi");
-        req.system.push(SystemPrompt::new("portable"));
-
-        let api_req = to_api_request(&req).unwrap();
-        let si = api_req
-            .system_instruction
-            .as_ref()
-            .expect("system_instruction");
-        match &si.parts[0] {
-            RequestPart::Text { text } => assert_eq!(text, "portable\n\nlegacy"),
-            other => panic!("expected Text, got {other:?}"),
-        }
     }
 
     #[test]
