@@ -33,6 +33,7 @@
 
 mod chat;
 mod content;
+mod embedding;
 mod error;
 #[cfg(feature = "extract")]
 mod extract;
