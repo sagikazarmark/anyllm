@@ -52,8 +52,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # anyllm-examples is excluded because its examples require live
+          # provider credentials. The dedicated Examples workflow runs them
+          # per-provider with secrets.
           cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] as $package | $package.targets[] | select(.kind[] == "example") | [$package.name, .name] | @tsv' \
+            | jq -r '.packages[] | select(.name != "anyllm-examples") as $package | $package.targets[] | select(.kind[] == "example") | [$package.name, .name] | @tsv' \
             | while IFS=$'\t' read -r package example; do
                 cargo run -p "$package" --all-features --example "$example"
               done
