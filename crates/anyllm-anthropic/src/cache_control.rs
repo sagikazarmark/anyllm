@@ -23,8 +23,6 @@ impl CacheControl {
     }
 
     /// Render to the wire JSON shape Anthropic expects.
-    // Task 6 will wire this into the adapter's request serializer.
-    #[allow(dead_code)]
     pub(crate) fn to_wire(&self) -> Value {
         match self {
             Self::Ephemeral => json!({"type": "ephemeral"}),

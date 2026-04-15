@@ -209,6 +209,19 @@ impl TryFrom<&ChatRequest> for CreateMessageRequest {
                 }
             };
 
+        // Emit req.system first. Order is preserved.
+        for prompt in &request.system {
+            let mut block = SystemBlock {
+                block_type: "text".to_string(),
+                text: prompt.content.clone(),
+                cache_control: None,
+            };
+            if let Some(cc) = prompt.option::<crate::CacheControl>() {
+                block.cache_control = Some(cc.to_wire());
+            }
+            system_blocks.push(block);
+        }
+
         for msg in &request.messages {
             match msg {
                 anyllm::Message::System {
@@ -1659,5 +1672,63 @@ mod tests {
             let err = try_from_request(&request).unwrap_err();
             assert!(matches!(err, anyllm::Error::Unsupported(text) if text == message));
         }
+    }
+
+    #[test]
+    fn req_system_prompt_emitted_as_top_level_system_block() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("claude-3-5-sonnet-20240620").user("hi");
+        req.system.push(SystemPrompt::new("Preamble"));
+
+        let api_req = try_from_request(&req).unwrap();
+        let value = serde_json::to_value(&api_req).unwrap();
+        assert_eq!(value["system"][0]["type"], "text");
+        assert_eq!(value["system"][0]["text"], "Preamble");
+    }
+
+    #[test]
+    fn req_system_multiple_prompts_preserve_order() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("claude-3-5-sonnet-20240620").user("hi");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+
+        let api_req = try_from_request(&req).unwrap();
+        let value = serde_json::to_value(&api_req).unwrap();
+        assert_eq!(value["system"][0]["text"], "A");
+        assert_eq!(value["system"][1]["text"], "B");
+    }
+
+    #[test]
+    fn req_system_cache_control_option_is_emitted() {
+        use crate::CacheControl;
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("claude-3-5-sonnet-20240620").user("hi");
+        req.system
+            .push(SystemPrompt::new("Cached").with_option(CacheControl::ephemeral()));
+
+        let api_req = try_from_request(&req).unwrap();
+        let value = serde_json::to_value(&api_req).unwrap();
+        assert_eq!(value["system"][0]["text"], "Cached");
+        assert_eq!(value["system"][0]["cache_control"]["type"], "ephemeral");
+    }
+
+    #[test]
+    fn req_system_unknown_option_is_silently_ignored() {
+        use anyllm::SystemPrompt;
+
+        #[derive(Clone)]
+        struct Foreign;
+
+        let mut req = ChatRequest::new("claude-3-5-sonnet-20240620").user("hi");
+        req.system.push(SystemPrompt::new("X").with_option(Foreign));
+
+        let api_req = try_from_request(&req).unwrap();
+        let value = serde_json::to_value(&api_req).unwrap();
+        assert_eq!(value["system"][0]["text"], "X");
+        assert!(value["system"][0].get("cache_control").is_none());
     }
 }
