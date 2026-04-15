@@ -46,7 +46,6 @@ mod message;
 #[cfg(any(test, feature = "mock"))]
 mod mock;
 mod options;
-mod request;
 mod response;
 mod retry;
 mod stream;
@@ -61,7 +60,8 @@ pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider
 
 pub use chat::{
     CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
-    DynChatProvider,
+    ChatRequest, ChatRequestRecord, DynChatProvider, ReasoningConfig, ReasoningEffort,
+    ResponseFormat,
 };
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use embedding::{
@@ -86,9 +86,6 @@ pub use mock::{
     MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
 };
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
-pub use request::{
-    ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat,
-};
 pub use response::{ChatResponse, ChatResponseRecord, FinishReason};
 pub use retry::{RetryPolicy, RetryingChatProvider};
 pub use stream::{
