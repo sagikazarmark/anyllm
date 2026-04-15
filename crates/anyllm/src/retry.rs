@@ -2,7 +2,8 @@ use std::fmt;
 use std::time::Duration;
 
 use crate::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, Error, Result,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, Error,
+    ProviderIdentity, Result,
 };
 use futures_timer::Delay;
 #[cfg(feature = "tracing")]
@@ -104,7 +105,9 @@ impl<T: ChatProvider> ChatProvider for RetryingChatProvider<T> {
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         self.inner.chat_capability(model, capability)
     }
+}
 
+impl<T: ProviderIdentity> ProviderIdentity for RetryingChatProvider<T> {
     fn provider_name(&self) -> &'static str {
         self.inner.provider_name()
     }

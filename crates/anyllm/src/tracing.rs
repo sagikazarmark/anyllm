@@ -10,7 +10,8 @@ use tracing::{Instrument, Span};
 
 use crate::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream, Error,
-    FinishReason, ResponseFormat, Result, StreamCollector, StreamEvent, Usage, UsageMetadataMode,
+    FinishReason, ProviderIdentity, ResponseFormat, Result, StreamCollector, StreamEvent, Usage,
+    UsageMetadataMode,
 };
 
 /// A wrapper around any [`ChatProvider`] that emits `tracing` spans with
@@ -21,6 +22,12 @@ use crate::{
 /// use anyllm::prelude::*;
 ///
 /// struct StaticProvider;
+///
+/// impl ProviderIdentity for StaticProvider {
+///     fn provider_name(&self) -> &'static str {
+///         "demo"
+///     }
+/// }
 ///
 /// impl ChatProvider for StaticProvider {
 ///     type Stream = SingleResponseStream;
@@ -35,10 +42,6 @@ use crate::{
 ///
 ///     async fn chat_stream(&self, request: &ChatRequest) -> anyllm::Result<Self::Stream> {
 ///         Ok(self.chat(request).await?.into_stream())
-///     }
-///
-///     fn provider_name(&self) -> &'static str {
-///         "demo"
 ///     }
 /// }
 ///
@@ -184,7 +187,12 @@ where
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         self.inner.chat_capability(model, capability)
     }
+}
 
+impl<T> ProviderIdentity for TracingChatProvider<T>
+where
+    T: ProviderIdentity,
+{
     fn provider_name(&self) -> &'static str {
         self.inner.provider_name()
     }

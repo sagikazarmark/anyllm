@@ -3,8 +3,8 @@
 use anyllm::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponseBuilder,
     ChatStreamExt, FallbackChatProvider, FinishReason, Message, MockProvider, MockStreamEvent,
-    MockStreamingProvider, RetryPolicy, RetryingChatProvider, StreamBlockType, StreamEvent,
-    TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
+    MockStreamingProvider, ProviderIdentity, RetryPolicy, RetryingChatProvider, StreamBlockType,
+    StreamEvent, TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
 };
 use futures_util::StreamExt;
 use std::collections::HashMap;

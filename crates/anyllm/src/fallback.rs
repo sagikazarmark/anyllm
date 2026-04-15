@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream, Error,
-    Result,
+    ProviderIdentity, Result,
 };
 
 /// A [`ChatProvider`] wrapper that delegates to a fallback provider when the
@@ -98,7 +98,13 @@ where
             self.fallback.chat_capability(model, capability),
         )
     }
+}
 
+impl<P, F> ProviderIdentity for FallbackChatProvider<P, F>
+where
+    P: ProviderIdentity,
+    F: ProviderIdentity,
+{
     fn provider_name(&self) -> &'static str {
         self.primary.provider_name()
     }

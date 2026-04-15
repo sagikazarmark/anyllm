@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, DynChatProvider,
-    Message, ResponseFormat, Tool, ToolChoice, UserContent,
+    Message, ProviderIdentity, ResponseFormat, Tool, ToolChoice, UserContent,
 };
 
 /// Extension trait for providers that support structured data extraction.
@@ -224,6 +224,15 @@ impl<P> ExtractingProvider<P> {
     }
 }
 
+impl<P> ProviderIdentity for ExtractingProvider<P>
+where
+    P: ProviderIdentity,
+{
+    fn provider_name(&self) -> &'static str {
+        self.inner.provider_name()
+    }
+}
+
 impl<P> ChatProvider for ExtractingProvider<P>
 where
     P: ChatProvider,
@@ -240,10 +249,6 @@ where
 
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         self.inner.chat_capability(model, capability)
-    }
-
-    fn provider_name(&self) -> &'static str {
-        self.inner.provider_name()
     }
 }
 

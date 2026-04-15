@@ -2,6 +2,12 @@ use anyllm::prelude::*;
 
 struct StaticProvider;
 
+impl ProviderIdentity for StaticProvider {
+    fn provider_name(&self) -> &'static str {
+        "static-demo"
+    }
+}
+
 impl ChatProvider for StaticProvider {
     type Stream = SingleResponseStream;
 
@@ -22,10 +28,6 @@ impl ChatProvider for StaticProvider {
             ChatCapability::Streaming => CapabilitySupport::Supported,
             _ => CapabilitySupport::Unknown,
         }
-    }
-
-    fn provider_name(&self) -> &'static str {
-        "static-demo"
     }
 }
 

@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use crate::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream,
-    ChatStreamExt, ContentBlock, Error, ExtraMap, FinishReason, ResponseMetadata, Result,
-    SingleResponseStream, StreamEvent, Usage,
+    ChatStreamExt, ContentBlock, Error, ExtraMap, FinishReason, ProviderIdentity, ResponseMetadata,
+    Result, SingleResponseStream, StreamEvent, Usage,
 };
 
 /// Deterministic chat provider for tests and downstream fixtures.
@@ -240,6 +240,12 @@ impl MockProvider {
     }
 }
 
+impl ProviderIdentity for MockProvider {
+    fn provider_name(&self) -> &'static str {
+        self.provider_name
+    }
+}
+
 impl ChatProvider for MockProvider {
     type Stream = SingleResponseStream;
 
@@ -261,10 +267,6 @@ impl ChatProvider for MockProvider {
             .get(&capability)
             .copied()
             .unwrap_or(CapabilitySupport::Unknown)
-    }
-
-    fn provider_name(&self) -> &'static str {
-        self.provider_name
     }
 }
 
@@ -780,6 +782,12 @@ impl MockStreamingProvider {
     }
 }
 
+impl ProviderIdentity for MockStreamingProvider {
+    fn provider_name(&self) -> &'static str {
+        self.provider_name
+    }
+}
+
 impl ChatProvider for MockStreamingProvider {
     type Stream = ChatStream;
 
@@ -814,10 +822,6 @@ impl ChatProvider for MockStreamingProvider {
             .get(&capability)
             .copied()
             .unwrap_or(CapabilitySupport::Unknown)
-    }
-
-    fn provider_name(&self) -> &'static str {
-        self.provider_name
     }
 }
 

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use futures_core::Stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{ChatRequest, ChatResponse, ChatStream, Result, StreamEvent};
+use crate::{ChatRequest, ChatResponse, ChatStream, ProviderIdentity, Result, StreamEvent};
 
 /// Core trait for LLM chat completion providers.
 ///
@@ -24,7 +24,7 @@ use crate::{ChatRequest, ChatResponse, ChatStream, Result, StreamEvent};
 /// For dynamic dispatch, use [`DynChatProvider`] which wraps any
 /// `ChatProvider` behind a manually-erased vtable, boxing futures only at the
 /// dyn boundary.
-pub trait ChatProvider: Send + Sync {
+pub trait ChatProvider: ProviderIdentity {
     /// Concrete stream type returned by [`chat_stream`](Self::chat_stream)
     type Stream: Stream<Item = Result<StreamEvent>> + Send;
 
@@ -53,16 +53,6 @@ pub trait ChatProvider: Send + Sync {
     /// Returns support information for a provider/model capability query.
     fn chat_capability(&self, _model: &str, _capability: ChatCapability) -> CapabilitySupport {
         CapabilitySupport::Unknown
-    }
-
-    /// Returns the provider identity string used for logs, tracing, fixtures,
-    /// and diagnostics (for example `"anthropic"` or `"openai"`).
-    ///
-    /// This is an open string surface rather than a closed enum so wrappers and
-    /// custom providers can preserve their existing naming. Callers should not
-    /// treat it as a stable capability-dispatch mechanism.
-    fn provider_name(&self) -> &'static str {
-        "unknown"
     }
 }
 
@@ -149,10 +139,6 @@ where
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         T::chat_capability(*self, model, capability)
     }
-
-    fn provider_name(&self) -> &'static str {
-        T::provider_name(*self)
-    }
 }
 
 impl<T> ChatProvider for Box<T>
@@ -172,10 +158,6 @@ where
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         T::chat_capability(self.as_ref(), model, capability)
     }
-
-    fn provider_name(&self) -> &'static str {
-        T::provider_name(self.as_ref())
-    }
 }
 
 impl<T> ChatProvider for Arc<T>
@@ -194,10 +176,6 @@ where
 
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         T::chat_capability(self.as_ref(), model, capability)
-    }
-
-    fn provider_name(&self) -> &'static str {
-        T::provider_name(self.as_ref())
     }
 }
 
@@ -243,8 +221,14 @@ where
 impl std::fmt::Debug for DynChatProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("DynChatProvider")
-            .field("provider", &self.0.provider_name_erased())
+            .field("provider", &self.0.provider_name())
             .finish()
+    }
+}
+
+impl ProviderIdentity for DynChatProvider {
+    fn provider_name(&self) -> &'static str {
+        self.0.provider_name()
     }
 }
 
@@ -262,17 +246,13 @@ impl ChatProvider for DynChatProvider {
     fn chat_capability(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         self.0.chat_capability_erased(model, capability)
     }
-
-    fn provider_name(&self) -> &'static str {
-        self.0.provider_name_erased()
-    }
 }
 
 /// Object-safe internal trait that manually boxes the async method futures.
 ///
 /// This is sealed: only the blanket impl for `T: ChatProvider` exists.
 /// Consumers interact with [`DynChatProvider`] instead.
-trait ChatProviderErased: Send + Sync {
+trait ChatProviderErased: ProviderIdentity {
     fn chat_erased<'a>(
         &'a self,
         request: &'a ChatRequest,
@@ -284,7 +264,6 @@ trait ChatProviderErased: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = Result<ChatStream>> + Send + 'a>>;
 
     fn chat_capability_erased(&self, model: &str, capability: ChatCapability) -> CapabilitySupport;
-    fn provider_name_erased(&self) -> &'static str;
 }
 
 impl<T> ChatProviderErased for T
@@ -311,10 +290,6 @@ where
 
     fn chat_capability_erased(&self, model: &str, capability: ChatCapability) -> CapabilitySupport {
         ChatProvider::chat_capability(self, model, capability)
-    }
-
-    fn provider_name_erased(&self) -> &'static str {
-        ChatProvider::provider_name(self)
     }
 }
 
@@ -403,6 +378,8 @@ mod tests {
             }
         }
     }
+
+    impl ProviderIdentity for DefaultOnlyProvider {}
 
     impl ChatProvider for DefaultOnlyProvider {
         type Stream = SingleResponseStream;
