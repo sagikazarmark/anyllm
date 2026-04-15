@@ -7,10 +7,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ChatStream, ProviderIdentity, Result, StreamEvent};
 
+mod content;
 mod message;
 mod request;
 mod response;
 
+pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use message::{
     AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
     ToolResultContent, UserContent, UserMessageRef,

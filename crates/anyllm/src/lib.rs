@@ -32,7 +32,6 @@
 //! but typed provider-specific data may be dropped or flattened to JSON.
 
 mod chat;
-mod content;
 mod embedding;
 mod error;
 #[cfg(feature = "extract")]
@@ -58,12 +57,11 @@ pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider
 
 pub use chat::{
     AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
-    ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ContentPart,
-    DynChatProvider, FinishReason, ImagePartRef, ImageSource, Message, ReasoningConfig,
-    ReasoningEffort, ResponseFormat, ToolMessageRef, ToolResultContent, UserContent,
-    UserMessageRef,
+    ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord,
+    ContentBlock, ContentPart, DynChatProvider, FinishReason, ImageBlockRef, ImagePartRef,
+    ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
+    ToolCallRef, ToolMessageRef, ToolResultContent, UserContent, UserMessageRef,
 };
-pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
     EmbeddingRequest, EmbeddingResponse,
