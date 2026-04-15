@@ -10,3 +10,16 @@ pub struct ChatRequestOptions {
     /// precedence over `ChatRequest.reasoning.budget_tokens` and `effort`.
     pub thinking_budget: Option<u32>,
 }
+
+/// Per-request options applied to Gemini embedding API calls.
+#[derive(Debug, Clone, Default)]
+pub struct EmbeddingRequestOptions {
+    /// Optional Gemini `taskType` hint (e.g. `RETRIEVAL_QUERY`).
+    ///
+    /// Forwarded verbatim to the Gemini API. The set of accepted values and
+    /// their semantics are provider-specific; `anyllm` does not interpret this
+    /// field.
+    pub task_type: Option<String>,
+    /// Optional `title` associated with the content for retrieval indexing.
+    pub title: Option<String>,
+}
