@@ -211,6 +211,9 @@ impl TryFrom<&ChatRequest> for CreateMessageRequest {
 
         // Emit req.system first. Order is preserved.
         for prompt in &request.system {
+            if prompt.content.is_empty() {
+                continue;
+            }
             let mut block = SystemBlock {
                 block_type: "text".to_string(),
                 text: prompt.content.clone(),
@@ -1697,6 +1700,23 @@ mod tests {
         let value = serde_json::to_value(&api_req).unwrap();
         assert_eq!(value["system"][0]["text"], "Cached");
         assert_eq!(value["system"][0]["cache_control"]["type"], "ephemeral");
+    }
+
+    #[test]
+    fn req_system_empty_content_is_filtered() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("claude-3-5-sonnet-20240620").user("hi");
+        req.system.push(SystemPrompt::new(""));
+
+        let api_req = try_from_request(&req).unwrap();
+        let value: serde_json::Value = serde_json::to_value(&api_req).unwrap();
+        assert!(
+            value.get("system").map_or(true, |s| s
+                .as_array()
+                .map_or(true, |a| a.is_empty())),
+            "empty-content prompt should be filtered, got {value:?}"
+        );
     }
 
     #[test]
