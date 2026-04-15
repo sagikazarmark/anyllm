@@ -526,4 +526,104 @@ mod tests {
             Err(other) => panic!("expected InvalidRequest, got {other:?}"),
         }
     }
+
+    #[test]
+    fn embedding_usage_lists_only_openai_and_gemini() {
+        let text = embedding_usage("provider_embedding", "[input...]");
+        assert!(text.contains("OPENAI_API_KEY"));
+        assert!(text.contains("GEMINI_API_KEY"));
+        assert!(text.contains("OPENAI_EMBEDDING_MODEL"));
+        assert!(text.contains("GEMINI_EMBEDDING_MODEL"));
+        assert!(!text.contains("ANTHROPIC_API_KEY"));
+    }
+
+    #[test]
+    fn embedding_kind_parse_rejects_anthropic_with_helpful_message() {
+        match EmbeddingProviderKind::parse("anthropic") {
+            Ok(_) => panic!("expected anthropic to be rejected for embeddings"),
+            Err(Error::InvalidRequest(message)) => {
+                assert!(message.contains("anthropic"));
+                assert!(message.contains("openai") || message.contains("gemini"));
+            }
+            Err(other) => panic!("expected InvalidRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn load_embedding_provider_from_env_autoselects_single_configured_provider() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _provider = EnvVarGuard::set("PROVIDER", None);
+        let _openai = EnvVarGuard::set("OPENAI_API_KEY", None);
+        let _anthropic = EnvVarGuard::set("ANTHROPIC_API_KEY", Some("anthropic-test-key"));
+        let _gemini = EnvVarGuard::set("GEMINI_API_KEY", Some("gemini-test-key"));
+        let _model = EnvVarGuard::set("GEMINI_EMBEDDING_MODEL", None);
+
+        // Even with Anthropic credentials set, embedding loader ignores it
+        // and auto-selects Gemini (the only configured embedding provider).
+        let loaded = load_embedding_provider_from_env().unwrap();
+        assert_eq!(loaded.kind, EmbeddingProviderKind::Gemini);
+        assert_eq!(loaded.model, EmbeddingProviderKind::Gemini.default_model());
+    }
+
+    #[test]
+    fn load_embedding_provider_from_env_rejects_when_no_provider_is_configured() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _provider = EnvVarGuard::set("PROVIDER", None);
+        let _openai = EnvVarGuard::set("OPENAI_API_KEY", None);
+        let _anthropic = EnvVarGuard::set("ANTHROPIC_API_KEY", Some("anthropic-test-key"));
+        let _gemini = EnvVarGuard::set("GEMINI_API_KEY", None);
+
+        // Anthropic is not an embedding provider — loader treats it as absent.
+        match load_embedding_provider_from_env() {
+            Ok(_) => panic!("expected missing embedding provider configuration to be rejected"),
+            Err(Error::InvalidRequest(message)) => {
+                assert!(
+                    message.contains(
+                        "PROVIDER is not set and no embedding provider credentials were found"
+                    )
+                );
+            }
+            Err(other) => panic!("expected InvalidRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn load_embedding_provider_from_env_rejects_ambiguous_selection() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _provider = EnvVarGuard::set("PROVIDER", None);
+        let _openai = EnvVarGuard::set("OPENAI_API_KEY", Some("openai-test-key"));
+        let _anthropic = EnvVarGuard::set("ANTHROPIC_API_KEY", None);
+        let _gemini = EnvVarGuard::set("GEMINI_API_KEY", Some("gemini-test-key"));
+
+        match load_embedding_provider_from_env() {
+            Ok(_) => panic!("expected ambiguous embedding provider configuration to be rejected"),
+            Err(Error::InvalidRequest(message)) => {
+                assert!(message.contains("multiple embedding providers are configured"));
+                assert!(message.contains("openai"));
+                assert!(message.contains("gemini"));
+                assert!(message.contains("Set PROVIDER explicitly"));
+            }
+            Err(other) => panic!("expected InvalidRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn load_embedding_provider_for_example_appends_example_specific_usage() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let _provider = EnvVarGuard::set("PROVIDER", None);
+        let _openai = EnvVarGuard::set("OPENAI_API_KEY", None);
+        let _anthropic = EnvVarGuard::set("ANTHROPIC_API_KEY", None);
+        let _gemini = EnvVarGuard::set("GEMINI_API_KEY", None);
+
+        match load_embedding_provider_for_example("provider_embedding", "[input...]") {
+            Ok(_) => panic!("expected missing embedding provider configuration to be rejected"),
+            Err(Error::InvalidRequest(message)) => {
+                assert!(message.contains("provider_embedding"));
+                assert!(message.contains("OPENAI_API_KEY"));
+                assert!(message.contains("GEMINI_API_KEY"));
+                assert!(!message.contains("ANTHROPIC_API_KEY"));
+            }
+            Err(other) => panic!("expected InvalidRequest, got {other:?}"),
+        }
+    }
 }
