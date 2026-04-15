@@ -165,4 +165,102 @@ mod tests {
         let timeout = crate::error::conformance_map_timeout_transport_error();
         assert_error_fixture_eq(&timeout, &fixtures, "error_timeout.json");
     }
+
+    #[test]
+    fn embed_request_fixture_matches() {
+        use anyllm::EmbeddingRequest;
+        use anyllm_conformance::assert_embedding_request_fixture_eq;
+
+        let fixtures = fixtures();
+        let request = EmbeddingRequest::new("text-embedding-004")
+            .inputs(["hello world", "gemini embeddings"])
+            .dimensions(256);
+        assert_embedding_request_fixture_eq(&request, &fixtures, "embed_request.json");
+    }
+
+    #[test]
+    fn embed_response_fixture_matches() {
+        use anyllm_conformance::{assert_embedding_response_fixture_eq, load_json_fixture};
+
+        let fixtures = fixtures();
+        let raw = load_json_fixture(&fixtures, "embed_response_raw.json");
+        let wire: crate::embedding::BatchEmbedContentsResponse =
+            serde_json::from_value(raw).unwrap();
+        let converted = crate::embedding::from_api_response(wire, "text-embedding-004");
+        assert_embedding_response_fixture_eq(&converted, &fixtures, "embed_response_expected.json");
+    }
+
+    #[test]
+    fn embed_error_fixtures_match() {
+        use anyllm_conformance::assert_embedding_error_fixture_eq;
+
+        let fixtures = fixtures();
+
+        let auth = crate::error::conformance_map_http_error(
+            401,
+            &serde_json::json!({
+                "error": {
+                    "code": 401,
+                    "message": "API key not valid",
+                    "status": "UNAUTHENTICATED"
+                }
+            })
+            .to_string(),
+            None,
+        );
+        assert_embedding_error_fixture_eq(&auth, &fixtures, "embed_error_auth.json");
+
+        let rate_limited = crate::error::conformance_map_http_error(
+            429,
+            &serde_json::json!({
+                "error": {
+                    "code": 429,
+                    "message": "Rate limit exceeded",
+                    "status": "RESOURCE_EXHAUSTED"
+                }
+            })
+            .to_string(),
+            Some(std::time::Duration::from_secs(30)),
+        );
+        assert_embedding_error_fixture_eq(
+            &rate_limited,
+            &fixtures,
+            "embed_error_rate_limited.json",
+        );
+
+        let context = crate::error::conformance_map_http_error(
+            400,
+            &serde_json::json!({
+                "error": {
+                    "code": 400,
+                    "message": "The input token count exceeds the model's maximum context length",
+                    "status": "INVALID_ARGUMENT"
+                }
+            })
+            .to_string(),
+            None,
+        );
+        assert_embedding_error_fixture_eq(&context, &fixtures, "embed_error_context_length.json");
+
+        let model_not_found = crate::error::conformance_map_http_error(
+            404,
+            &serde_json::json!({
+                "error": {
+                    "code": 404,
+                    "message": "The model 'text-embedding-9999' does not exist",
+                    "status": "NOT_FOUND"
+                }
+            })
+            .to_string(),
+            None,
+        );
+        assert_embedding_error_fixture_eq(
+            &model_not_found,
+            &fixtures,
+            "embed_error_model_not_found.json",
+        );
+
+        let timeout = crate::error::conformance_map_timeout_transport_error();
+        assert_embedding_error_fixture_eq(&timeout, &fixtures, "embed_error_timeout.json");
+    }
 }

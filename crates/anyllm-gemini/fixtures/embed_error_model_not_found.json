@@ -1,0 +1,4 @@
+{
+  "type": "model_not_found",
+  "message": "The model 'text-embedding-9999' does not exist"
+}
