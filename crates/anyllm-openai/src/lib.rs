@@ -91,6 +91,7 @@ impl Provider {
         TransportConfig {
             base_url: self.inner.base_url.clone(),
             chat_completions_path: "/chat/completions".into(),
+            embeddings_path: "/embeddings".into(),
             auth_header_name: "authorization".into(),
             auth_header_value: format!("Bearer {}", self.inner.api_key),
             organization_header: self
