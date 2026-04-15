@@ -494,6 +494,7 @@ where
 
     Ok(ChatRequest {
         model: request.model.clone(),
+        system: request.system.clone(),
         messages: request.messages.clone(),
         temperature: request.temperature,
         max_tokens: request.max_tokens,
@@ -570,6 +571,7 @@ where
     let tool_name = extraction_tool_name();
     Ok(ChatRequest {
         model: request.model.clone(),
+        system: request.system.clone(),
         messages: request.messages.clone(),
         temperature: request.temperature,
         max_tokens: request.max_tokens,

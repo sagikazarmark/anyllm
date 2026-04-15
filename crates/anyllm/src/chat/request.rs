@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Message, RequestOptions, Tool, ToolCallRef, ToolChoice, ToolResultContent, UserContent,
+    Message, RequestOptions, SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolResultContent,
+    UserContent,
 };
 
 /// A provider-agnostic chat completion request.
@@ -23,6 +24,8 @@ use crate::{
 pub struct ChatRequest {
     /// Provider-specific model identifier to route this request to.
     pub model: String,
+    /// Request-level system instructions (empty when no system prompt is set).
+    pub system: Vec<SystemPrompt>,
     /// Ordered conversation history sent to the model.
     pub messages: Vec<Message>,
     /// Sampling temperature when the provider exposes it.
@@ -59,6 +62,7 @@ impl ChatRequest {
     pub fn new(model: impl Into<String>) -> Self {
         Self {
             model: model.into(),
+            system: Vec::new(),
             messages: Vec::new(),
             temperature: None,
             max_tokens: None,
@@ -384,6 +388,7 @@ impl ChatRequestRecord {
     pub fn into_chat_request_lossy(self) -> ChatRequest {
         ChatRequest {
             model: self.model,
+            system: Vec::new(),
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
@@ -473,6 +478,7 @@ mod tests {
     use super::*;
     #[cfg(feature = "extract")]
     use crate::ExtractionMode;
+    use crate::SystemPrompt;
     use serde_json::json;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -792,5 +798,28 @@ mod tests {
         assert_eq!(borrowed.model, "gpt-4o");
         assert_eq!(borrowed.stop, Some(vec!["END".into()]));
         assert_eq!(borrowed.parallel_tool_calls, Some(true));
+    }
+
+    #[test]
+    fn chat_request_new_has_empty_system() {
+        let req = ChatRequest::new("gpt-4o");
+        assert!(req.system.is_empty());
+    }
+
+    #[test]
+    fn chat_request_system_field_holds_prompts() {
+        let mut req = ChatRequest::new("gpt-4o");
+        req.system.push(SystemPrompt::new("Be concise"));
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "Be concise");
+    }
+
+    #[test]
+    fn chat_request_clone_preserves_system() {
+        let mut req = ChatRequest::new("gpt-4o");
+        req.system.push(SystemPrompt::new("X"));
+        let cloned = req.clone();
+        assert_eq!(cloned.system.len(), 1);
+        assert_eq!(cloned.system[0].content, "X");
     }
 }
