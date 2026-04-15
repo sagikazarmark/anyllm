@@ -44,7 +44,6 @@ mod identity;
 #[cfg(any(test, feature = "mock"))]
 mod mock;
 mod options;
-mod retry;
 mod usage;
 mod utils;
 
@@ -58,9 +57,9 @@ pub use chat::{
     ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream,
     ChatStreamExt, CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FinishReason,
     ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall, ReasoningConfig,
-    ReasoningEffort, ResponseFormat, SingleResponseStream, StreamBlockType, StreamCollector,
-    StreamCompleteness, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolMessageRef,
-    ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
+    ReasoningEffort, ResponseFormat, RetryPolicy, RetryingChatProvider, SingleResponseStream,
+    StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent, Tool, ToolCallRef,
+    ToolChoice, ToolMessageRef, ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
 };
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
@@ -80,7 +79,6 @@ pub use mock::{
     MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
 };
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
-pub use retry::{RetryPolicy, RetryingChatProvider};
 pub use usage::Usage;
 
 /// Portable JSON object used for provider-specific escape hatches.

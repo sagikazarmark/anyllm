@@ -11,6 +11,7 @@ mod content;
 mod message;
 mod request;
 mod response;
+mod retry;
 mod stream;
 mod tool;
 
@@ -21,6 +22,7 @@ pub use message::{
 };
 pub use request::{ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat};
 pub use response::{ChatResponse, ChatResponseRecord, FinishReason};
+pub use retry::{RetryPolicy, RetryingChatProvider};
 pub use stream::{
     ChatStream, ChatStreamExt, CollectedResponse, SingleResponseStream, StreamBlockType,
     StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
