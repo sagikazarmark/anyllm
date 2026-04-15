@@ -244,7 +244,24 @@ pub fn to_chat_completion_request(
     stream: bool,
     provider_options: &RequestOptions,
 ) -> anyllm::Result<ChatCompletionRequest> {
-    let mut messages = Vec::with_capacity(request.messages.len());
+    // Emit req.system as one role: "system" wire message per prompt, in order,
+    // before any req.messages entries. Empty-content prompts are skipped so
+    // we never put empty system messages on the wire. Typed SystemOptions
+    // entries are silently ignored — no OpenAI-specific options are defined
+    // in V1.
+    let mut messages = Vec::with_capacity(request.system.len() + request.messages.len());
+    for prompt in &request.system {
+        if prompt.content.is_empty() {
+            continue;
+        }
+        messages.push(ApiMessage {
+            role: ROLE_SYSTEM.to_string(),
+            content: Some(serde_json::json!(prompt.content)),
+            name: None,
+            tool_calls: None,
+            tool_call_id: None,
+        });
+    }
     for message in &request.messages {
         messages.push(convert_message(message)?);
     }
@@ -794,5 +811,42 @@ mod tests {
         let null_content: ChatCompletionMessage =
             serde_json::from_value(json!({"role": "assistant", "content": null})).unwrap();
         assert!(null_content.content.is_none());
+    }
+
+    #[test]
+    fn req_system_emits_system_messages_at_front() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gpt-4o-compat").user("hi");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+
+        let api_req =
+            to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
+        assert_eq!(api_req.messages[0].role, "system");
+        assert_eq!(api_req.messages[0].content, Some(json!("A")));
+        assert_eq!(api_req.messages[1].role, "system");
+        assert_eq!(api_req.messages[1].content, Some(json!("B")));
+        assert_eq!(api_req.messages[2].role, "user");
+    }
+
+    #[test]
+    fn req_system_empty_emits_no_system_messages() {
+        let req = ChatRequest::new("gpt-4o-compat").user("hi");
+        let api_req =
+            to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
+        assert_eq!(api_req.messages[0].role, "user");
+    }
+
+    #[test]
+    fn req_system_empty_content_is_filtered() {
+        use anyllm::SystemPrompt;
+        let mut req = ChatRequest::new("gpt-4o-compat").user("hi");
+        req.system.push(SystemPrompt::new(""));
+
+        let api_req =
+            to_chat_completion_request(&req, false, &RequestOptions::default()).unwrap();
+        // Empty-content prompt should NOT produce a system wire message
+        assert_eq!(api_req.messages[0].role, "user");
     }
 }
