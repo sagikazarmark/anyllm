@@ -507,19 +507,19 @@ fn convert_assistant_content(content: &[ContentBlock]) -> Result<Vec<RequestPart
 ///
 /// `req.system` entries come first (the portable carrier), followed by any
 /// legacy `Message::System` entries in `messages`. Segments are separated
-/// by `"\n\n"`. Returns `None` when no text is present in either carrier.
+/// by `"\n\n"`. Empty segments are filtered out so they don't leak onto
+/// the wire as stray separators. Returns `None` when no non-empty segments
+/// are present across either carrier.
 fn join_system_texts(system: &[anyllm::SystemPrompt], messages: &[Message]) -> Option<String> {
-    let mut segments: Vec<&str> = Vec::new();
-
-    for prompt in system {
-        segments.push(prompt.content.as_str());
-    }
-
-    for message in messages {
-        if let Message::System { content, .. } = message {
-            segments.push(content.as_str());
-        }
-    }
+    let segments: Vec<&str> = system
+        .iter()
+        .map(|prompt| prompt.content.as_str())
+        .chain(messages.iter().filter_map(|message| match message {
+            Message::System { content, .. } => Some(content.as_str()),
+            _ => None,
+        }))
+        .filter(|s| !s.is_empty())
+        .collect();
 
     if segments.is_empty() {
         None
@@ -1835,5 +1835,42 @@ mod tests {
         let req = ChatRequest::new("gemini-1.5-pro").user("hi");
         let api_req = to_api_request(&req).unwrap();
         assert!(api_req.system_instruction.is_none());
+    }
+
+    #[test]
+    fn req_system_prepended_before_legacy_message_system() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gemini-1.5-pro")
+            .message(Message::System {
+                content: "legacy".to_string(),
+                extensions: None,
+            })
+            .user("hi");
+        req.system.push(SystemPrompt::new("portable"));
+
+        let api_req = to_api_request(&req).unwrap();
+        let si = api_req
+            .system_instruction
+            .as_ref()
+            .expect("system_instruction");
+        match &si.parts[0] {
+            RequestPart::Text { text } => assert_eq!(text, "portable\n\nlegacy"),
+            other => panic!("expected Text, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn req_system_empty_content_elided_from_system_instruction() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gemini-1.5-pro").user("hi");
+        req.system.push(SystemPrompt::new(""));
+
+        let api_req = to_api_request(&req).unwrap();
+        assert!(
+            api_req.system_instruction.is_none(),
+            "empty content should not produce a systemInstruction"
+        );
     }
 }
