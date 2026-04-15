@@ -22,9 +22,10 @@ run the same examples against a different provider.
 - `PROVIDER=anthropic` uses `ANTHROPIC_API_KEY` and optionally `ANTHROPIC_BASE_URL`
 - `PROVIDER=gemini` uses `GEMINI_API_KEY` and optionally `GEMINI_BASE_URL`
 
-`cloudflare-worker` is intentionally not part of this loader because that
-provider must be constructed from a Cloudflare `worker::Ai` binding inside a
-real Worker runtime, not from local env vars alone.
+Cloudflare Workers AI is not part of this loader because it is exercised
+through an HTTP smoke endpoint rather than a Rust provider built from local
+env vars alone. See [Live tests](#live-tests) below for how to point the live
+suite at a running smoke endpoint.
 
 Each provider also supports a model override env var used by these examples:
 
@@ -35,10 +36,6 @@ Each provider also supports a model override env var used by these examples:
 If `PROVIDER` is unset, the loader auto-selects only when exactly one provider
 credential env var is configured. Otherwise it fails fast and tells you to set
 `PROVIDER` explicitly.
-
-These examples are intentionally the runnable story for the env-driven HTTP
-providers only. Cloudflare Workers AI uses the separate `worker-smoke/` app in
-`anyllm-cloudflare-worker` because it needs a real Worker runtime.
 
 ## Examples
 
@@ -89,9 +86,9 @@ hard failure rather than a skip.
 The HTTP live test runs basic chat, streaming, a validated tool round-trip, and
 structured extraction sequentially for each selected provider.
 
-Cloudflare Workers AI is covered separately through the Worker smoke app. To run
-that runtime smoke check, start `crates/anyllm-cloudflare-worker/worker-smoke/`
-with Wrangler and point the live suite at it:
+Cloudflare Workers AI is covered separately through a Worker smoke endpoint
+rather than a Rust provider. Point the live suite at any running smoke
+deployment that speaks the expected HTTP shape:
 
 ```bash
 ANYLLM_LIVE_PROVIDER=cloudflare-worker \
@@ -101,7 +98,5 @@ cargo test -p anyllm-examples --test live_cloudflare_worker -- --nocapture --tes
 
 Optionally set `CLOUDFLARE_WORKER_MODEL` to override the default smoke app
 model per request. `CLOUDFLARE_WORKER_TOOL_MODEL` and
-`CLOUDFLARE_WORKER_JSON_MODEL` are also supported for route-specific overrides.
-
-For Cloudflare Workers AI, use the dedicated smoke app in
-`crates/anyllm-cloudflare-worker/worker-smoke/`.
+`CLOUDFLARE_WORKER_JSON_MODEL` are also supported for route-specific
+overrides.
