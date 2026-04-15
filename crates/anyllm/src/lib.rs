@@ -37,6 +37,7 @@ mod error;
 #[cfg(feature = "extract")]
 mod extract;
 mod fallback;
+mod identity;
 mod message;
 /// Mock providers for testing. Enable the `mock` feature to use these types
 /// as a library consumer. These types are not covered by the semver stability
@@ -69,6 +70,7 @@ pub use extract::{
     ExtractionRequest, Extractor,
 };
 pub use fallback::FallbackChatProvider;
+pub use identity::ProviderIdentity;
 pub use message::{
     AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
     ToolResultContent, UserContent, UserMessageRef,
@@ -106,10 +108,10 @@ pub mod prelude {
         CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
         ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
         DynChatProvider, Error, ErrorLog, ExtraMap, FallbackChatProvider, FinishReason,
-        ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
-        Result, RetryPolicy, RetryingChatProvider, SingleResponseStream, StreamBlockType,
-        StreamCollector, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage,
-        UserContent,
+        ImageSource, Message, OwnedToolCall, ProviderIdentity, ReasoningConfig, ReasoningEffort,
+        ResponseFormat, Result, RetryPolicy, RetryingChatProvider, SingleResponseStream,
+        StreamBlockType, StreamCollector, StreamEvent, Tool, ToolCallRef, ToolChoice,
+        ToolResultContent, Usage, UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]
