@@ -44,6 +44,10 @@ name = "chat"
 required-features = ["mock"]
 
 [[example]]
+name = "embedding"
+required-features = ["mock"]
+
+[[example]]
 name = "stream"
 required-features = ["mock"]
 

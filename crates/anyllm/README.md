@@ -24,6 +24,7 @@ Use it when you want to:
 - `ChatProvider`: <https://docs.rs/anyllm/latest/anyllm/trait.ChatProvider.html>
 - `EmbeddingProvider`: <https://docs.rs/anyllm/latest/anyllm/trait.EmbeddingProvider.html>
 - chat example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/chat.rs>
+- embedding example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/embedding.rs>
 - streaming example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/stream.rs>
 - provider implementation example: <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/provider_impl.rs>
 
