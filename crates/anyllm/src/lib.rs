@@ -33,10 +33,12 @@
 
 mod chat;
 mod content;
+mod embedding;
 mod error;
 #[cfg(feature = "extract")]
 mod extract;
 mod fallback;
+mod identity;
 mod message;
 /// Mock providers for testing. Enable the `mock` feature to use these types
 /// as a library consumer. These types are not covered by the semver stability
@@ -62,6 +64,10 @@ pub use chat::{
     DynChatProvider,
 };
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
+pub use embedding::{
+    DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
+    EmbeddingRequest, EmbeddingResponse,
+};
 pub use error::{Error, ErrorLog, Result, SerializationError};
 #[cfg(feature = "extract")]
 pub use extract::{
@@ -69,14 +75,15 @@ pub use extract::{
     ExtractionRequest, Extractor,
 };
 pub use fallback::FallbackChatProvider;
+pub use identity::ProviderIdentity;
 pub use message::{
     AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
     ToolResultContent, UserContent, UserMessageRef,
 };
 #[cfg(any(test, feature = "mock"))]
 pub use mock::{
-    ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
-    MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+    ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder, MockResponse,
+    MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
 };
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
 pub use request::{
@@ -105,17 +112,19 @@ pub mod prelude {
     pub use crate::{
         CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
         ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
-        DynChatProvider, Error, ErrorLog, ExtraMap, FallbackChatProvider, FinishReason,
-        ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
-        Result, RetryPolicy, RetryingChatProvider, SingleResponseStream, StreamBlockType,
-        StreamCollector, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage,
-        UserContent,
+        DynChatProvider, DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider,
+        EmbeddingProviderExt, EmbeddingRequest, EmbeddingResponse, Error, ErrorLog, ExtraMap,
+        FallbackChatProvider, FinishReason, ImageSource, Message, OwnedToolCall, ProviderIdentity,
+        ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
+        RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
+        Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]
     pub use crate::{
-        ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
-        MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+        ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder,
+        MockResponse, MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder,
+        MockToolRoundTrip,
     };
 
     #[cfg(feature = "extract")]

@@ -1,0 +1,4 @@
+{
+  "type": "context_length_exceeded",
+  "message": "The input token count exceeds the model's maximum context length"
+}

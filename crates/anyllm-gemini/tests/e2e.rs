@@ -11,6 +11,10 @@ fn model() -> String {
     std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-2.5-flash".into())
 }
 
+fn embedding_model() -> String {
+    std::env::var("GEMINI_EMBEDDING_MODEL").unwrap_or_else(|_| "gemini-embedding-001".into())
+}
+
 #[tokio::test]
 #[ignore]
 async fn basic_chat() {
@@ -46,4 +50,22 @@ async fn tool_calling() {
 #[ignore]
 async fn extract() {
     e2e::extract(&make_provider(), &model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn basic_embed() {
+    e2e::basic_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn batch_embed() {
+    e2e::batch_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn dimensions() {
+    e2e::dimensions(&make_provider(), &embedding_model(), 32).await;
 }

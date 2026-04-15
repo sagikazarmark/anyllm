@@ -19,6 +19,11 @@ fn model() -> String {
     std::env::var("OPENAI_COMPAT_MODEL").expect("OPENAI_COMPAT_MODEL must be set to run e2e tests")
 }
 
+fn embedding_model() -> String {
+    std::env::var("OPENAI_COMPAT_EMBEDDING_MODEL")
+        .expect("OPENAI_COMPAT_EMBEDDING_MODEL must be set to run e2e tests")
+}
+
 #[tokio::test]
 #[ignore]
 async fn basic_chat() {
@@ -60,4 +65,22 @@ async fn structured_output() {
 #[ignore]
 async fn extract() {
     e2e::extract(&make_provider(), &model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn basic_embed() {
+    e2e::basic_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn batch_embed() {
+    e2e::batch_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn dimensions() {
+    e2e::dimensions(&make_provider(), &embedding_model(), 32).await;
 }

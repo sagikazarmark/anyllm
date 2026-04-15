@@ -1,6 +1,9 @@
 #[cfg(feature = "extract")]
 use anyllm::ExtractExt;
-use anyllm::{ChatProvider, ChatRequest, ChatStreamExt, FinishReason, ResponseFormat, Tool};
+use anyllm::{
+    CapabilitySupport, ChatProvider, ChatRequest, ChatStreamExt, EmbeddingCapability,
+    EmbeddingProvider, EmbeddingRequest, FinishReason, ResponseFormat, Tool,
+};
 #[cfg(feature = "extract")]
 use schemars::JsonSchema;
 #[cfg(feature = "extract")]
@@ -231,5 +234,57 @@ pub async fn extract<P: ExtractExt>(provider: &P, model: &str) {
     assert!(
         !extracted.value.greeting.is_empty(),
         "extract: greeting field is empty"
+    );
+}
+
+/// Validate basic embedding: non-empty vector of f32, matches input count.
+pub async fn basic_embed(provider: &impl EmbeddingProvider, model: &str) {
+    let request = EmbeddingRequest::new(model).input("hello world");
+    let response = provider.embed(&request).await.expect("embed failed");
+
+    assert_eq!(response.embeddings.len(), 1, "expected 1 embedding");
+    assert!(
+        !response.embeddings[0].is_empty(),
+        "expected non-empty vector"
+    );
+}
+
+/// Validate batch embedding: output count matches input count and order.
+pub async fn batch_embed(provider: &impl EmbeddingProvider, model: &str) {
+    let inputs = ["first input", "second input", "third input"];
+    let request = EmbeddingRequest::new(model).inputs(inputs);
+    let response = provider.embed(&request).await.expect("embed failed");
+
+    assert_eq!(
+        response.embeddings.len(),
+        inputs.len(),
+        "batch output count should match input count"
+    );
+    let dim = response.embeddings[0].len();
+    for vector in &response.embeddings {
+        assert_eq!(
+            vector.len(),
+            dim,
+            "all vectors should share the same length"
+        );
+    }
+}
+
+/// Validate optional `dimensions` request field when the provider supports it.
+/// No-ops when the provider reports `Unsupported` or `Unknown`.
+pub async fn dimensions(provider: &impl EmbeddingProvider, model: &str, requested: u32) {
+    let support = provider.embedding_capability(model, EmbeddingCapability::OutputDimensions);
+    if support != CapabilitySupport::Supported {
+        return;
+    }
+    let request = EmbeddingRequest::new(model)
+        .input("hello dimensions")
+        .dimensions(requested);
+    let response = provider.embed(&request).await.expect("embed failed");
+    assert_eq!(response.embeddings.len(), 1);
+    assert_eq!(
+        response.embeddings[0].len(),
+        requested as usize,
+        "vector length should equal the requested dimensions"
     );
 }

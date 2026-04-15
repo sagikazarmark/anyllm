@@ -1,4 +1,4 @@
-use anyllm::{CapabilitySupport, ChatCapability};
+use anyllm::{CapabilitySupport, ChatCapability, EmbeddingCapability};
 
 use crate::{Provider, ProviderBuilder};
 
@@ -69,7 +69,8 @@ impl Cloudflare {
             ))
             .bearer_token(api_token)
             .provider_name("cloudflare")
-            .chat_capabilities(Self::default_chat_capabilities()))
+            .chat_capabilities(Self::default_chat_capabilities())
+            .embedding_capabilities(Self::default_embedding_capabilities()))
     }
 
     /// Create a Cloudflare Workers AI provider from environment variables.
@@ -92,12 +93,19 @@ impl Cloudflare {
             ),
         ]
     }
+
+    fn default_embedding_capabilities() -> [(EmbeddingCapability, CapabilitySupport); 1] {
+        [(
+            EmbeddingCapability::BatchInput,
+            CapabilitySupport::Supported,
+        )]
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Cloudflare;
-    use anyllm::ChatProvider;
+    use anyllm::ProviderIdentity;
 
     #[test]
     fn new_rejects_blank_account_id() {
@@ -124,5 +132,18 @@ mod tests {
             .build()
             .unwrap();
         assert_eq!(provider.provider_name(), "cloudflare");
+    }
+
+    #[test]
+    fn cloudflare_defaults_include_embedding_capabilities() {
+        use anyllm::{EmbeddingCapability, EmbeddingProvider};
+        let provider = Cloudflare::new("account", "token").unwrap();
+        assert_eq!(
+            provider.embedding_capability(
+                "@cf/baai/bge-base-en-v1.5",
+                EmbeddingCapability::BatchInput,
+            ),
+            anyllm::CapabilitySupport::Supported,
+        );
     }
 }

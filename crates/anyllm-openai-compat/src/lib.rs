@@ -1,15 +1,22 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
+use anyllm::{
+    CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, Error, Result,
+};
 
 mod chat;
+mod embedding;
 mod error;
 mod options;
 pub mod providers;
 mod streaming;
 mod wire;
 
+pub use embedding::{
+    EmbeddingData, EmbeddingRequestOptions, EmbeddingsRequest, EmbeddingsResponse, EmbeddingsUsage,
+    from_embeddings_response, send_embeddings_request, to_embeddings_request,
+};
 pub use error::{
     map_http_error, map_response_deserialize_error, map_stream_error, map_transport_error,
 };
@@ -39,6 +46,7 @@ pub(crate) struct Inner {
     pub(crate) transport: TransportConfig,
     pub(crate) chat_capabilities: HashMap<ChatCapability, CapabilitySupport>,
     pub(crate) chat_capability_resolver: Option<Arc<dyn ChatCapabilityResolver>>,
+    pub(crate) embedding_capabilities: HashMap<EmbeddingCapability, CapabilitySupport>,
     pub(crate) provider_name: &'static str,
 }
 
@@ -75,6 +83,7 @@ impl Provider {
         ProviderBuilder {
             base_url: None,
             chat_completions_path: None,
+            embeddings_path: None,
             auth_header_name: None,
             auth_header_value: None,
             organization_header: None,
@@ -82,6 +91,7 @@ impl Provider {
             request_id_header_name: None,
             retry_after_header_name: None,
             chat_capabilities: HashMap::new(),
+            embedding_capabilities: HashMap::new(),
             provider_name: None,
             client: None,
         }
@@ -100,6 +110,7 @@ impl Provider {
                 transport: self.inner.transport.clone(),
                 chat_capabilities: self.inner.chat_capabilities.clone(),
                 chat_capability_resolver: Some(Arc::new(resolver)),
+                embedding_capabilities: self.inner.embedding_capabilities.clone(),
                 provider_name: self.inner.provider_name,
             }),
         }
@@ -122,6 +133,7 @@ impl Provider {
 pub struct ProviderBuilder {
     base_url: Option<String>,
     chat_completions_path: Option<String>,
+    embeddings_path: Option<String>,
     auth_header_name: Option<String>,
     auth_header_value: Option<String>,
     organization_header: Option<(String, String)>,
@@ -129,6 +141,7 @@ pub struct ProviderBuilder {
     request_id_header_name: Option<String>,
     retry_after_header_name: Option<String>,
     chat_capabilities: HashMap<ChatCapability, CapabilitySupport>,
+    embedding_capabilities: HashMap<EmbeddingCapability, CapabilitySupport>,
     provider_name: Option<&'static str>,
     client: Option<reqwest::Client>,
 }
@@ -144,6 +157,13 @@ impl ProviderBuilder {
     /// Defaults to `/chat/completions`.
     pub fn chat_completions_path(mut self, path: impl Into<String>) -> Self {
         self.chat_completions_path = Some(path.into());
+        self
+    }
+
+    /// Path appended to base_url for embeddings.
+    /// Defaults to `/embeddings`.
+    pub fn embeddings_path(mut self, path: impl Into<String>) -> Self {
+        self.embeddings_path = Some(path.into());
         self
     }
 
@@ -211,6 +231,25 @@ impl ProviderBuilder {
         self
     }
 
+    /// Set support information for an embedding capability.
+    pub fn embedding_capability(
+        mut self,
+        capability: EmbeddingCapability,
+        support: CapabilitySupport,
+    ) -> Self {
+        self.embedding_capabilities.insert(capability, support);
+        self
+    }
+
+    /// Set multiple embedding capability support values for this provider.
+    pub fn embedding_capabilities<I>(mut self, capabilities: I) -> Self
+    where
+        I: IntoIterator<Item = (EmbeddingCapability, CapabilitySupport)>,
+    {
+        self.embedding_capabilities.extend(capabilities);
+        self
+    }
+
     /// Set the provider name (used in logging and error messages).
     pub fn provider_name(mut self, name: &'static str) -> Self {
         self.provider_name = Some(name);
@@ -234,6 +273,7 @@ impl ProviderBuilder {
             chat_completions_path: self
                 .chat_completions_path
                 .unwrap_or_else(|| "/chat/completions".into()),
+            embeddings_path: self.embeddings_path.unwrap_or_else(|| "/embeddings".into()),
             auth_header_name: self
                 .auth_header_name
                 .unwrap_or_else(|| "authorization".into()),
@@ -257,6 +297,7 @@ impl ProviderBuilder {
                 transport,
                 chat_capabilities: self.chat_capabilities,
                 chat_capability_resolver: None,
+                embedding_capabilities: self.embedding_capabilities,
                 provider_name: self.provider_name.unwrap_or("openai_compat"),
             }),
         })
@@ -267,6 +308,7 @@ impl ProviderBuilder {
 pub struct TransportConfig {
     pub base_url: String,
     pub chat_completions_path: String,
+    pub embeddings_path: String,
     pub auth_header_name: String,
     pub auth_header_value: String,
     pub organization_header: Option<(String, String)>,
@@ -278,6 +320,10 @@ pub struct TransportConfig {
 impl TransportConfig {
     pub fn chat_completions_url(&self) -> String {
         format!("{}{}", self.base_url, self.chat_completions_path)
+    }
+
+    pub fn embeddings_url(&self) -> String {
+        format!("{}{}", self.base_url, self.embeddings_path)
     }
 }
 
@@ -336,6 +382,7 @@ mod tests {
         let config = TransportConfig {
             base_url: "https://example.com/v1".into(),
             chat_completions_path: "/chat/completions".into(),
+            embeddings_path: "/embeddings".into(),
             auth_header_name: "authorization".into(),
             auth_header_value: "Bearer sk-test".into(),
             organization_header: None,
@@ -348,6 +395,22 @@ mod tests {
             config.chat_completions_url(),
             "https://example.com/v1/chat/completions"
         );
+    }
+
+    #[test]
+    fn transport_config_builds_embeddings_url() {
+        let config = TransportConfig {
+            base_url: "https://example.com/v1".into(),
+            chat_completions_path: "/chat/completions".into(),
+            embeddings_path: "/embeddings".into(),
+            auth_header_name: "authorization".into(),
+            auth_header_value: "Bearer sk-test".into(),
+            organization_header: None,
+            project_header: None,
+            request_id_header_name: "x-request-id".into(),
+            retry_after_header_name: "retry-after".into(),
+        };
+        assert_eq!(config.embeddings_url(), "https://example.com/v1/embeddings");
     }
 
     #[test]
@@ -508,6 +571,86 @@ mod tests {
         );
         assert_eq!(
             provider.chat_capability("modern", ChatCapability::StructuredOutput),
+            CapabilitySupport::Supported
+        );
+    }
+
+    #[tokio::test]
+    async fn embed_posts_expected_request_and_parses_response() {
+        use anyllm::{EmbeddingCapability, EmbeddingProvider, EmbeddingRequest};
+        use anyllm_conformance::{MockHttpResponse, TestHttpServer};
+
+        let server = TestHttpServer::spawn([MockHttpResponse::json(
+            200,
+            &serde_json::json!({
+                "data": [
+                    {"embedding": [0.1, 0.2], "index": 0},
+                    {"embedding": [0.3, 0.4], "index": 1}
+                ],
+                "model": "text-embedding-3-small",
+                "usage": {"prompt_tokens": 4, "total_tokens": 4}
+            }),
+        )])
+        .await;
+
+        let provider = Provider::builder()
+            .base_url(format!("{}/v1", server.url()))
+            .bearer_token("sk-test")
+            .provider_name("test-compat")
+            .embedding_capability(
+                EmbeddingCapability::BatchInput,
+                CapabilitySupport::Supported,
+            )
+            .build()
+            .unwrap();
+
+        let request = EmbeddingRequest::new("text-embedding-3-small")
+            .inputs(["a", "b"])
+            .dimensions(32);
+        let response = provider.embed(&request).await.unwrap();
+
+        assert_eq!(response.embeddings, vec![vec![0.1, 0.2], vec![0.3, 0.4]]);
+        assert_eq!(response.model.as_deref(), Some("text-embedding-3-small"));
+        assert_eq!(
+            response.usage.as_ref().and_then(|u| u.input_tokens),
+            Some(4)
+        );
+
+        let recorded = server.recorded_requests().await;
+        assert_eq!(recorded.len(), 1);
+        let body = recorded[0].body_json();
+        assert_eq!(body["model"], "text-embedding-3-small");
+        assert_eq!(body["input"], serde_json::json!(["a", "b"]));
+        assert_eq!(body["dimensions"], 32);
+        assert_eq!(recorded[0].path, "/v1/embeddings");
+        assert_eq!(recorded[0].header("authorization"), Some("Bearer sk-test"));
+    }
+
+    #[test]
+    fn embedding_capability_reads_builder_config() {
+        use anyllm::{EmbeddingCapability, EmbeddingProvider};
+        let provider = Provider::builder()
+            .base_url("https://example.com/v1")
+            .bearer_token("token")
+            .embedding_capabilities([
+                (
+                    EmbeddingCapability::BatchInput,
+                    CapabilitySupport::Supported,
+                ),
+                (
+                    EmbeddingCapability::OutputDimensions,
+                    CapabilitySupport::Supported,
+                ),
+            ])
+            .build()
+            .unwrap();
+
+        assert_eq!(
+            provider.embedding_capability("m", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.embedding_capability("m", EmbeddingCapability::OutputDimensions),
             CapabilitySupport::Supported
         );
     }

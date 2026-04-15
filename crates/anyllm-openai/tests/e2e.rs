@@ -11,6 +11,10 @@ fn model() -> String {
     std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o-mini".into())
 }
 
+fn embedding_model() -> String {
+    std::env::var("OPENAI_EMBEDDING_MODEL").unwrap_or_else(|_| "text-embedding-3-small".into())
+}
+
 #[tokio::test]
 #[ignore]
 async fn basic_chat() {
@@ -52,4 +56,22 @@ async fn structured_output() {
 #[ignore]
 async fn extract() {
     e2e::extract(&make_provider(), &model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn basic_embed() {
+    e2e::basic_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn batch_embed() {
+    e2e::batch_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn dimensions() {
+    e2e::dimensions(&make_provider(), &embedding_model(), 32).await;
 }

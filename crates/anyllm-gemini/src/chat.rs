@@ -1,7 +1,8 @@
 #[cfg(feature = "extract")]
 use anyllm::ExtractExt;
 use anyllm::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream, Result,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream,
+    ProviderIdentity, Result,
 };
 
 use crate::Provider;
@@ -106,7 +107,9 @@ impl ChatProvider for Provider {
             self.builtin_chat_capability(model, capability)
         }
     }
+}
 
+impl ProviderIdentity for Provider {
     fn provider_name(&self) -> &'static str {
         "gemini"
     }

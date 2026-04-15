@@ -223,3 +223,73 @@ async fn chat_posts_openai_vision_request_shape() {
     assert_eq!(parts[1]["image_url"]["url"], "https://example.com/cat.png");
     assert_eq!(parts[1]["image_url"]["detail"], "high");
 }
+
+#[tokio::test]
+async fn embed_posts_expected_request_and_parses_response() {
+    use anyllm::{EmbeddingProvider, EmbeddingRequest};
+    use anyllm_conformance::assert_embedding_response_fixture_eq;
+
+    let fixtures = fixtures();
+    let raw = load_json_fixture(&fixtures, "embed_response_raw.json");
+    let server = TestHttpServer::spawn([MockHttpResponse::json(200, &raw)]).await;
+
+    let provider = Provider::builder()
+        .api_key("sk-test")
+        .base_url(format!("{}/v1/", server.url()))
+        .organization("org-test")
+        .project("proj-test")
+        .build()
+        .unwrap();
+
+    let request = EmbeddingRequest::new("text-embedding-3-small")
+        .inputs(["hello world", "embedding fixtures"])
+        .dimensions(32);
+    let response = provider.embed(&request).await.unwrap();
+
+    assert_embedding_response_fixture_eq(&response, &fixtures, "embed_response_expected.json");
+
+    let recorded = server.recorded_requests().await;
+    assert_eq!(recorded.len(), 1);
+    let recorded = &recorded[0];
+    assert_eq!(recorded.method, "POST");
+    assert_eq!(recorded.path, "/v1/embeddings");
+    assert_eq!(recorded.header("authorization"), Some("Bearer sk-test"));
+    assert_eq!(recorded.header("openai-organization"), Some("org-test"));
+    assert_eq!(recorded.header("openai-project"), Some("proj-test"));
+
+    let body = recorded.body_json();
+    assert_eq!(body["model"], "text-embedding-3-small");
+    assert_eq!(
+        body["input"],
+        serde_json::json!(["hello world", "embedding fixtures"])
+    );
+    assert_eq!(body["dimensions"], 32);
+}
+
+#[tokio::test]
+async fn embed_maps_401_to_auth_error() {
+    use anyllm::{EmbeddingProvider, EmbeddingRequest, Error};
+
+    let server = TestHttpServer::spawn([MockHttpResponse::json(
+        401,
+        &serde_json::json!({
+            "error": {
+                "type": "invalid_request_error",
+                "message": "Incorrect API key provided"
+            }
+        }),
+    )])
+    .await;
+
+    let provider = Provider::builder()
+        .api_key("sk-test")
+        .base_url(format!("{}/v1/", server.url()))
+        .build()
+        .unwrap();
+
+    let err = provider
+        .embed(&EmbeddingRequest::new("text-embedding-3-small").input("hi"))
+        .await
+        .unwrap_err();
+    assert!(matches!(err, Error::Auth(_)));
+}

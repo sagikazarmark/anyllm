@@ -1,0 +1,5 @@
+{
+  "type": "rate_limited",
+  "message": "Rate limit exceeded",
+  "retry_after_secs": 30.0
+}

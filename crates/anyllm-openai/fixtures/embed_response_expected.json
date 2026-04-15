@@ -1,0 +1,11 @@
+{
+  "embeddings": [
+    [0.0, 0.5, 0.25],
+    [0.75, 1.0, -0.5]
+  ],
+  "model": "text-embedding-3-small",
+  "usage": {
+    "input_tokens": 4,
+    "total_tokens": 4
+  }
+}

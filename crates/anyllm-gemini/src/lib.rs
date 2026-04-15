@@ -4,12 +4,13 @@ use std::{sync::Arc, time::Duration};
 mod chat;
 #[cfg(test)]
 mod conformance_tests;
+mod embedding;
 mod error;
 mod options;
 mod streaming;
 mod wire;
 
-pub use options::ChatRequestOptions;
+pub use options::{ChatRequestOptions, EmbeddingRequestOptions};
 
 #[cfg(feature = "http-tracing")]
 type HttpClient = reqwest_middleware::ClientWithMiddleware;
