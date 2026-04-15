@@ -5,11 +5,13 @@ use std::sync::Arc;
 use futures_core::Stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{ChatResponse, ChatStream, ProviderIdentity, Result, StreamEvent};
+use crate::{ChatStream, ProviderIdentity, Result, StreamEvent};
 
 mod request;
+mod response;
 
 pub use request::{ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat};
+pub use response::{ChatResponse, ChatResponseRecord, FinishReason};
 
 /// Core trait for LLM chat completion providers.
 ///
