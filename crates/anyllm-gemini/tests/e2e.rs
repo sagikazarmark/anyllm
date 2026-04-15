@@ -12,7 +12,7 @@ fn model() -> String {
 }
 
 fn embedding_model() -> String {
-    std::env::var("GEMINI_EMBEDDING_MODEL").unwrap_or_else(|_| "text-embedding-004".into())
+    std::env::var("GEMINI_EMBEDDING_MODEL").unwrap_or_else(|_| "gemini-embedding-001".into())
 }
 
 #[tokio::test]
