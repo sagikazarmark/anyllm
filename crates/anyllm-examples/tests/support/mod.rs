@@ -1,14 +1,8 @@
 use anyllm::{Error, Result};
 use anyllm_examples::{ALL_PROVIDER_KINDS, ProviderKind};
 
-const VALID_SELECTION_NAMES: &[&str] = &[
-    "all",
-    "configured",
-    "openai",
-    "anthropic",
-    "gemini",
-    "cloudflare-worker",
-];
+const VALID_SELECTION_NAMES: &[&str] =
+    &["all", "configured", "openai", "anthropic", "gemini"];
 
 pub fn live_selection() -> Option<String> {
     std::env::var("ANYLLM_LIVE_PROVIDER")
@@ -45,12 +39,6 @@ fn configured_http_provider_kinds() -> impl Iterator<Item = ProviderKind> {
     })
 }
 
-fn cloudflare_worker_smoke_url_is_set() -> bool {
-    std::env::var("ANYLLM_CLOUDFLARE_WORKER_SMOKE_URL")
-        .ok()
-        .is_some_and(|value| !value.trim().is_empty())
-}
-
 pub fn selection_includes(selection: &str, name: &str) -> bool {
     selection
         .split(',')
@@ -65,20 +53,9 @@ pub fn selection_uses_configured_alias(selection: &str) -> bool {
         .any(|value| value == "all" || value == "configured")
 }
 
-#[allow(dead_code)]
-pub fn selection_targets_any_http_provider(selection: &str) -> bool {
-    selection.split(',').map(str::trim).any(|value| {
-        value == "all"
-            || value == "configured"
-            || value == "openai"
-            || value == "anthropic"
-            || value == "gemini"
-    })
-}
-
 pub fn ensure_selection_has_runnable_target(selection: &str) -> Result<()> {
     let has_runnable_target = if selection_uses_configured_alias(selection) {
-        configured_http_provider_kinds().next().is_some() || cloudflare_worker_smoke_url_is_set()
+        configured_http_provider_kinds().next().is_some()
     } else {
         selection
             .split(',')
@@ -93,7 +70,6 @@ pub fn ensure_selection_has_runnable_target(selection: &str) -> Result<()> {
                 "gemini" => {
                     configured_http_provider_kinds().any(|kind| kind == ProviderKind::Gemini)
                 }
-                "cloudflare-worker" => cloudflare_worker_smoke_url_is_set(),
                 _ => false,
             })
     };
@@ -102,7 +78,7 @@ pub fn ensure_selection_has_runnable_target(selection: &str) -> Result<()> {
         Ok(())
     } else {
         Err(Error::InvalidRequest(format!(
-            "ANYLLM_LIVE_PROVIDER={selection} selected no runnable live targets; configure at least one provider credential or ANYLLM_CLOUDFLARE_WORKER_SMOKE_URL"
+            "ANYLLM_LIVE_PROVIDER={selection} selected no runnable live targets; configure at least one provider credential"
         )))
     }
 }
@@ -135,6 +111,6 @@ mod tests {
 
     #[test]
     fn accepts_known_live_selection_entries() {
-        validate_live_selection("configured,cloudflare-worker").unwrap();
+        validate_live_selection("configured,openai").unwrap();
     }
 }

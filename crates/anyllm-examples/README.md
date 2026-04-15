@@ -22,11 +22,6 @@ run the same examples against a different provider.
 - `PROVIDER=anthropic` uses `ANTHROPIC_API_KEY` and optionally `ANTHROPIC_BASE_URL`
 - `PROVIDER=gemini` uses `GEMINI_API_KEY` and optionally `GEMINI_BASE_URL`
 
-Cloudflare Workers AI is not part of this loader because it is exercised
-through an HTTP smoke endpoint rather than a Rust provider built from local
-env vars alone. See [Live tests](#live-tests) below for how to point the live
-suite at a running smoke endpoint.
-
 Each provider also supports a model override env var used by these examples:
 
 - OpenAI: `OPENAI_MODEL` (chat), `OPENAI_EMBEDDING_MODEL` (embedding)
@@ -94,17 +89,3 @@ hard failure rather than a skip.
 The HTTP live test runs basic chat, streaming, a validated tool round-trip, and
 structured extraction sequentially for each selected provider.
 
-Cloudflare Workers AI is covered separately through a Worker smoke endpoint
-rather than a Rust provider. Point the live suite at any running smoke
-deployment that speaks the expected HTTP shape:
-
-```bash
-ANYLLM_LIVE_PROVIDER=cloudflare-worker \
-ANYLLM_CLOUDFLARE_WORKER_SMOKE_URL=http://127.0.0.1:8787 \
-cargo test -p anyllm-examples --test live_cloudflare_worker -- --nocapture --test-threads=1
-```
-
-Optionally set `CLOUDFLARE_WORKER_MODEL` to override the default smoke app
-model per request. `CLOUDFLARE_WORKER_TOOL_MODEL` and
-`CLOUDFLARE_WORKER_JSON_MODEL` are also supported for route-specific
-overrides.

@@ -197,18 +197,12 @@ async fn run_live_extract(target: &anyllm_examples::LoadedProvider) -> Result<()
 async fn live_http_providers_smoke() -> Result<()> {
     let Some(selection) = support::live_selection() else {
         eprintln!(
-            "skipping HTTP provider live checks; set ANYLLM_LIVE_PROVIDER=openai|anthropic|gemini|cloudflare-worker|all"
+            "skipping HTTP provider live checks; set ANYLLM_LIVE_PROVIDER=openai|anthropic|gemini|all"
         );
         return Ok(());
     };
 
     support::validate_live_selection(&selection)?;
-
-    if !support::selection_targets_any_http_provider(&selection) {
-        eprintln!("skipping HTTP provider live checks; ANYLLM_LIVE_PROVIDER={selection}");
-        return Ok(());
-    }
-
     support::ensure_selection_has_runnable_target(&selection)?;
 
     let mut executed = 0usize;
