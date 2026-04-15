@@ -236,3 +236,45 @@ async fn chat_rejects_blocked_prompt_feedback() {
         anyllm::Error::ContentFiltered(message) if message == "Prompt blocked by safety filters"
     ));
 }
+
+#[tokio::test]
+async fn embed_posts_expected_request_and_parses_response() {
+    use anyllm::{EmbeddingProvider, EmbeddingRequest};
+    use anyllm_conformance::{
+        MockHttpResponse, TestHttpServer, assert_embedding_response_fixture_eq, load_json_fixture,
+    };
+
+    let fixtures = fixtures();
+    let raw = load_json_fixture(&fixtures, "embed_response_raw.json");
+    let server = TestHttpServer::spawn([MockHttpResponse::json(200, &raw)]).await;
+
+    let provider = Provider::builder()
+        .api_key("test-key")
+        .base_url(format!("{}/v1beta", server.url()))
+        .build()
+        .unwrap();
+
+    let request = EmbeddingRequest::new("text-embedding-004")
+        .inputs(["hello world", "gemini embeddings"])
+        .dimensions(256);
+    let response = provider.embed(&request).await.unwrap();
+
+    assert_embedding_response_fixture_eq(&response, &fixtures, "embed_response_expected.json");
+
+    let recorded = server.recorded_requests().await;
+    assert_eq!(recorded.len(), 1);
+    let recorded = &recorded[0];
+    assert_eq!(recorded.method, "POST");
+    assert_eq!(
+        recorded.path,
+        "/v1beta/models/text-embedding-004:batchEmbedContents"
+    );
+    assert_eq!(recorded.header("x-goog-api-key"), Some("test-key"));
+
+    let body = recorded.body_json();
+    let requests = body["requests"].as_array().unwrap();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[0]["model"], "models/text-embedding-004");
+    assert_eq!(requests[0]["outputDimensionality"], 256);
+    assert_eq!(requests[0]["content"]["parts"][0]["text"], "hello world");
+}
