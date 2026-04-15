@@ -352,6 +352,41 @@ where
     }
 }
 
+/// Convenience extension methods for [`EmbeddingProvider`] implementors.
+pub trait EmbeddingProviderExt: EmbeddingProvider {
+    /// Quick one-shot embedding for a single input.
+    ///
+    /// # Errors
+    ///
+    /// Propagates any [`crate::Error`] from the underlying
+    /// [`EmbeddingProvider::embed`] call, and returns
+    /// [`crate::Error::UnexpectedResponse`] if the provider response contains
+    /// no embeddings.
+    fn embed_text(
+        &self,
+        model: &str,
+        input: impl Into<String>,
+    ) -> impl Future<Output = Result<Vec<f32>>> + Send {
+        let input = input.into();
+        let model = model.to_string();
+
+        async move {
+            let response = self
+                .embed(&EmbeddingRequest::new(model).input(input))
+                .await?;
+
+            response.embeddings.into_iter().next().ok_or_else(|| {
+                crate::Error::UnexpectedResponse(format!(
+                    "provider '{}' returned no embeddings for embed_text()",
+                    self.provider_name()
+                ))
+            })
+        }
+    }
+}
+
+impl<T: EmbeddingProvider> EmbeddingProviderExt for T {}
+
 #[cfg(test)]
 mod request_tests {
     use super::*;
@@ -610,5 +645,60 @@ mod dyn_tests {
         let debug = format!("{provider:?}");
         assert!(debug.contains("DynEmbeddingProvider"));
         assert!(debug.contains("debug-embed"));
+    }
+}
+
+#[cfg(test)]
+mod ext_tests {
+    use super::*;
+    use crate::{Error, ProviderIdentity};
+    use std::sync::Mutex;
+
+    struct RecordingProvider {
+        response: EmbeddingResponse,
+        last_inputs: Mutex<Option<Vec<String>>>,
+    }
+
+    impl ProviderIdentity for RecordingProvider {
+        fn provider_name(&self) -> &'static str {
+            "recording"
+        }
+    }
+
+    impl EmbeddingProvider for RecordingProvider {
+        async fn embed(&self, request: &EmbeddingRequest) -> crate::Result<EmbeddingResponse> {
+            *self.last_inputs.lock().unwrap() = Some(request.inputs.clone());
+            Ok(self.response.clone())
+        }
+    }
+
+    #[tokio::test]
+    async fn embed_text_sends_single_input_and_returns_vector() {
+        let provider = RecordingProvider {
+            response: EmbeddingResponse::new(vec![vec![0.5, 0.5]]),
+            last_inputs: Mutex::new(None),
+        };
+        let vector = provider.embed_text("model", "hello").await.unwrap();
+        assert_eq!(vector, vec![0.5, 0.5]);
+        assert_eq!(
+            provider.last_inputs.lock().unwrap().clone(),
+            Some(vec!["hello".to_string()])
+        );
+    }
+
+    #[tokio::test]
+    async fn embed_text_errors_when_response_has_no_vectors() {
+        let provider = RecordingProvider {
+            response: EmbeddingResponse::new(Vec::new()),
+            last_inputs: Mutex::new(None),
+        };
+        let err = provider.embed_text("model", "hello").await.unwrap_err();
+        match err {
+            Error::UnexpectedResponse(message) => assert!(
+                message.contains("recording"),
+                "expected provider name in error, got: {message}"
+            ),
+            other => panic!("expected UnexpectedResponse, got {other:?}"),
+        }
     }
 }
