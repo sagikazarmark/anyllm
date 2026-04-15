@@ -39,7 +39,6 @@ mod error;
 mod extract;
 mod fallback;
 mod identity;
-mod message;
 /// Mock providers for testing. Enable the `mock` feature to use these types
 /// as a library consumer. These types are not covered by the semver stability
 /// guarantee.
@@ -58,9 +57,11 @@ mod tracing;
 pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
 
 pub use chat::{
-    CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
-    ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, DynChatProvider,
-    FinishReason, ReasoningConfig, ReasoningEffort, ResponseFormat,
+    AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
+    ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ContentPart,
+    DynChatProvider, FinishReason, ImagePartRef, ImageSource, Message, ReasoningConfig,
+    ReasoningEffort, ResponseFormat, ToolMessageRef, ToolResultContent, UserContent,
+    UserMessageRef,
 };
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use embedding::{
@@ -75,10 +76,6 @@ pub use extract::{
 };
 pub use fallback::FallbackChatProvider;
 pub use identity::ProviderIdentity;
-pub use message::{
-    AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
-    ToolResultContent, UserContent, UserMessageRef,
-};
 #[cfg(any(test, feature = "mock"))]
 pub use mock::{
     ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder, MockResponse,
