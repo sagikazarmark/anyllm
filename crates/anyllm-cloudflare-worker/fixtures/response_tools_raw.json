@@ -1,0 +1,10 @@
+{
+  "tool_calls": [
+    {
+      "name": "lookup_weather",
+      "arguments": {
+        "city": "London"
+      }
+    }
+  ]
+}

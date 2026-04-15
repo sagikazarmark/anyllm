@@ -1,0 +1,30 @@
+[package]
+name = "anyllm-cloudflare-worker"
+description = "Cloudflare Workers AI provider for anyllm using the workers-rs binding"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+anyllm = { workspace = true }
+futures-util = { workspace = true }
+send_wrapper = "0.6"
+serde = { workspace = true }
+serde_json = { workspace = true }
+worker = "0.7"
+
+[dev-dependencies]
+anyllm-conformance = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[features]
+default = ["extract"]
+extract = ["anyllm/extract"]
+
+[package.metadata.docs.rs]
+all-features = true
