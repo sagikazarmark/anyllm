@@ -577,11 +577,9 @@ mod tests {
         match load_embedding_provider_from_env() {
             Ok(_) => panic!("expected missing embedding provider configuration to be rejected"),
             Err(Error::InvalidRequest(message)) => {
-                assert!(
-                    message.contains(
-                        "PROVIDER is not set and no embedding provider credentials were found"
-                    )
-                );
+                assert!(message.contains(
+                    "PROVIDER is not set and no embedding provider credentials were found"
+                ));
             }
             Err(other) => panic!("expected InvalidRequest, got {other:?}"),
         }
