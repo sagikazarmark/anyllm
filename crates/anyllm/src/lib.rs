@@ -45,7 +45,6 @@ mod identity;
 mod mock;
 mod options;
 mod retry;
-mod stream;
 mod usage;
 mod utils;
 
@@ -56,10 +55,12 @@ pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider
 
 pub use chat::{
     AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
-    ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord,
-    ContentBlock, ContentPart, DynChatProvider, FinishReason, ImageBlockRef, ImagePartRef,
-    ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat, Tool,
-    ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent, UserContent, UserMessageRef,
+    ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream,
+    ChatStreamExt, CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FinishReason,
+    ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall, ReasoningConfig,
+    ReasoningEffort, ResponseFormat, SingleResponseStream, StreamBlockType, StreamCollector,
+    StreamCompleteness, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolMessageRef,
+    ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
 };
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
@@ -80,10 +81,6 @@ pub use mock::{
 };
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
 pub use retry::{RetryPolicy, RetryingChatProvider};
-pub use stream::{
-    ChatStream, ChatStreamExt, CollectedResponse, SingleResponseStream, StreamBlockType,
-    StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
-};
 pub use usage::Usage;
 
 /// Portable JSON object used for provider-specific escape hatches.
