@@ -101,15 +101,16 @@ mod request_tests {
             .input("world");
 
         assert_eq!(request.model, "text-embedding-3-small");
-        assert_eq!(request.inputs, vec!["hello".to_string(), "world".to_string()]);
+        assert_eq!(
+            request.inputs,
+            vec!["hello".to_string(), "world".to_string()]
+        );
         assert_eq!(request.dimensions, None);
     }
 
     #[test]
     fn inputs_replaces_existing() {
-        let request = EmbeddingRequest::new("model")
-            .input("a")
-            .inputs(["b", "c"]);
+        let request = EmbeddingRequest::new("model").input("a").inputs(["b", "c"]);
 
         assert_eq!(request.inputs, vec!["b".to_string(), "c".to_string()]);
     }
@@ -127,8 +128,7 @@ mod request_tests {
 
     #[test]
     fn typed_options_round_trip() {
-        let request =
-            EmbeddingRequest::new("model").with_option(ProviderHint { tag: "retrieval" });
+        let request = EmbeddingRequest::new("model").with_option(ProviderHint { tag: "retrieval" });
 
         assert_eq!(
             request.option::<ProviderHint>(),
