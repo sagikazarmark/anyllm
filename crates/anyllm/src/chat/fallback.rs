@@ -223,7 +223,7 @@ mod tests {
         let fallback = MockProvider::with_text("fallback");
         let wrapper = FallbackChatProvider::new(primary, fallback);
         let request = ChatRequest::new("test-model")
-            .message(Message::system("follow instructions"))
+            .system("follow instructions")
             .message(Message::user("hi"))
             .temperature(0.2)
             .max_tokens(128)

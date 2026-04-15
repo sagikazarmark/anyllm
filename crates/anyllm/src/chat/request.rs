@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Message, RequestOptions, Tool, ToolCallRef, ToolChoice, ToolResultContent, UserContent,
+    Message, RequestOptions, SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolResultContent,
+    UserContent,
 };
 
 /// A provider-agnostic chat completion request.
@@ -23,6 +24,8 @@ use crate::{
 pub struct ChatRequest {
     /// Provider-specific model identifier to route this request to.
     pub model: String,
+    /// Request-level system instructions (empty when no system prompt is set).
+    pub system: Vec<SystemPrompt>,
     /// Ordered conversation history sent to the model.
     pub messages: Vec<Message>,
     /// Sampling temperature when the provider exposes it.
@@ -59,6 +62,7 @@ impl ChatRequest {
     pub fn new(model: impl Into<String>) -> Self {
         Self {
             model: model.into(),
+            system: Vec::new(),
             messages: Vec::new(),
             temperature: None,
             max_tokens: None,
@@ -93,10 +97,11 @@ impl ChatRequest {
         self
     }
 
-    /// Shorthand for `.message(Message::system(content))`.
+    /// Append a system prompt. Accepts `&str`, `String`, or [`SystemPrompt`].
     #[must_use]
-    pub fn system(self, content: impl Into<String>) -> Self {
-        self.message(Message::system(content))
+    pub fn system(mut self, prompt: impl Into<SystemPrompt>) -> Self {
+        self.system.push(prompt.into());
+        self
     }
 
     /// Shorthand for `.message(Message::user(content))`.
@@ -268,6 +273,7 @@ impl ChatRequest {
     pub fn into_record_lossy(self) -> ChatRequestRecord {
         ChatRequestRecord {
             model: self.model,
+            system: self.system,
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
@@ -299,6 +305,9 @@ impl ChatRequest {
 pub struct ChatRequestRecord {
     /// Provider-specific model identifier.
     pub model: String,
+    /// Request-level system instructions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub system: Vec<SystemPrompt>,
     /// Ordered conversation history.
     pub messages: Vec<Message>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -359,6 +368,7 @@ impl ChatRequestRecord {
     pub fn from_request_lossy(request: &ChatRequest) -> Self {
         Self {
             model: request.model.clone(),
+            system: request.system.clone(),
             messages: request.messages.clone(),
             temperature: request.temperature,
             max_tokens: request.max_tokens,
@@ -384,6 +394,7 @@ impl ChatRequestRecord {
     pub fn into_chat_request_lossy(self) -> ChatRequest {
         ChatRequest {
             model: self.model,
+            system: self.system,
             messages: self.messages,
             temperature: self.temperature,
             max_tokens: self.max_tokens,
@@ -473,6 +484,7 @@ mod tests {
     use super::*;
     #[cfg(feature = "extract")]
     use crate::ExtractionMode;
+    use crate::SystemPrompt;
     use serde_json::json;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -617,6 +629,7 @@ mod tests {
         let obj = value.as_object().unwrap();
         assert!(obj.contains_key("model"));
         assert!(obj.contains_key("messages"));
+        assert!(!obj.contains_key("system"));
         assert!(!obj.contains_key("temperature"));
         assert!(!obj.contains_key("max_tokens"));
         assert!(!obj.contains_key("top_p"));
@@ -675,9 +688,37 @@ mod tests {
             .user("Hello")
             .assistant("Hi");
 
-        assert_eq!(req.messages.len(), 3);
-        assert_eq!(req.messages[1], Message::user("Hello"));
-        assert_eq!(req.messages[2], Message::assistant("Hi"));
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "Be concise");
+        assert_eq!(req.messages.len(), 2);
+        assert_eq!(req.messages[0], Message::user("Hello"));
+        assert_eq!(req.messages[1], Message::assistant("Hi"));
+    }
+
+    #[test]
+    fn system_builder_accepts_str() {
+        let req = ChatRequest::new("gpt-4o").system("Hello");
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "Hello");
+        assert!(req.messages.is_empty());
+    }
+
+    #[test]
+    fn system_builder_accepts_system_prompt() {
+        let req = ChatRequest::new("claude-sonnet-4-5").system(SystemPrompt::new("X"));
+        assert_eq!(req.system[0].content, "X");
+        assert!(req.messages.is_empty());
+    }
+
+    #[test]
+    fn system_builder_appends_multiple() {
+        let req = ChatRequest::new("claude-sonnet-4-5")
+            .system("A")
+            .system(SystemPrompt::new("B"));
+        assert_eq!(req.system.len(), 2);
+        assert_eq!(req.system[0].content, "A");
+        assert_eq!(req.system[1].content, "B");
+        assert!(req.messages.is_empty());
     }
 
     #[test]
@@ -729,7 +770,9 @@ mod tests {
             .with_option(DemoOption { enabled: true });
 
         assert_eq!(req.model, "claude-3-opus");
-        assert_eq!(req.messages.len(), 2);
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "You are a helpful assistant");
+        assert_eq!(req.messages.len(), 1);
         assert_eq!(req.temperature, Some(0.7));
         assert_eq!(req.max_tokens, Some(4096));
         assert_eq!(req.top_p, Some(0.95));
@@ -792,5 +835,68 @@ mod tests {
         assert_eq!(borrowed.model, "gpt-4o");
         assert_eq!(borrowed.stop, Some(vec!["END".into()]));
         assert_eq!(borrowed.parallel_tool_calls, Some(true));
+    }
+
+    #[test]
+    fn chat_request_new_has_empty_system() {
+        let req = ChatRequest::new("gpt-4o");
+        assert!(req.system.is_empty());
+    }
+
+    #[test]
+    fn chat_request_system_field_holds_prompts() {
+        let mut req = ChatRequest::new("gpt-4o");
+        req.system.push(SystemPrompt::new("Be concise"));
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "Be concise");
+    }
+
+    #[test]
+    fn chat_request_clone_preserves_system() {
+        let mut req = ChatRequest::new("gpt-4o");
+        req.system.push(SystemPrompt::new("X"));
+        let cloned = req.clone();
+        assert_eq!(cloned.system.len(), 1);
+        assert_eq!(cloned.system[0].content, "X");
+    }
+
+    #[test]
+    fn chat_request_record_preserves_system() {
+        let mut req = ChatRequest::new("claude-sonnet-4-5");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+
+        let record = ChatRequestRecord::from(&req);
+        assert_eq!(record.system.len(), 2);
+        assert_eq!(record.system[0].content, "A");
+        assert_eq!(record.system[1].content, "B");
+
+        let rebuilt = record.clone().into_chat_request_lossy();
+        assert_eq!(rebuilt.system.len(), 2);
+        assert_eq!(rebuilt.system[0].content, "A");
+    }
+
+    #[test]
+    fn chat_request_record_serde_skips_empty_system() {
+        let req = ChatRequest::new("gpt-4o");
+        let record = ChatRequestRecord::from(&req);
+        let json = serde_json::to_value(&record).unwrap();
+        let obj = json.as_object().unwrap();
+        assert!(
+            !obj.contains_key("system"),
+            "empty system should be skipped, got {obj:?}"
+        );
+    }
+
+    #[test]
+    fn chat_request_record_serde_round_trip_with_system() {
+        let mut req = ChatRequest::new("claude-sonnet-4-5");
+        req.system.push(SystemPrompt::new("Preamble"));
+
+        let record = ChatRequestRecord::from(&req);
+        let json = serde_json::to_string(&record).unwrap();
+        let rebuilt: ChatRequestRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(rebuilt.system.len(), 1);
+        assert_eq!(rebuilt.system[0].content, "Preamble");
     }
 }

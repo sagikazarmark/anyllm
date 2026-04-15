@@ -11,6 +11,7 @@ mod request;
 mod response;
 mod retry;
 mod stream;
+mod system;
 mod tool;
 
 #[cfg(any(test, feature = "mock"))]
@@ -40,6 +41,7 @@ pub use stream::{
     ChatStream, ChatStreamExt, CollectedResponse, SingleResponseStream, StreamBlockType,
     StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
 };
+pub use system::{SystemOptions, SystemPrompt};
 pub use tool::{Tool, ToolChoice};
 
 #[cfg(any(test, feature = "mock"))]

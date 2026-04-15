@@ -658,4 +658,27 @@ mod tests {
             FinishReason::Other("something_new".into())
         );
     }
+
+    #[test]
+    fn req_system_emits_system_messages_at_front() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gpt-4o").user("hi");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+
+        let api_req = to_api_request(&req, false).unwrap();
+        assert_eq!(api_req.messages[0].role, "system");
+        assert_eq!(api_req.messages[0].content, Some(json!("A")));
+        assert_eq!(api_req.messages[1].role, "system");
+        assert_eq!(api_req.messages[1].content, Some(json!("B")));
+        assert_eq!(api_req.messages[2].role, "user");
+    }
+
+    #[test]
+    fn req_system_empty_emits_no_system_messages() {
+        let req = ChatRequest::new("gpt-4o").user("hi");
+        let api_req = to_api_request(&req, false).unwrap();
+        assert_eq!(api_req.messages[0].role, "user");
+    }
 }

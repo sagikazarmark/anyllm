@@ -1,3 +1,15 @@
+//! Wire types and conversions for the Gemini `generateContent` API.
+//!
+//! Gemini exposes a single `systemInstruction` field on the wire, so all
+//! `req.system` entries are joined with `"\n\n"` into one text part.
+//! Typed [`SystemOptions`] entries (e.g. `anyllm_anthropic::CacheControl`)
+//! are dropped when routing to Gemini — per-block cache hints are not part
+//! of `generateContent`. Gemini's caching is exposed through a separate
+//! `cachedContent` API, which is reached through [`crate::ChatRequestOptions`],
+//! not through this field.
+//!
+//! [`SystemOptions`]: anyllm::SystemOptions
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize)]
@@ -228,8 +240,10 @@ pub(crate) fn to_api_request(request: &ChatRequest) -> Result<GenerateContentReq
     let provider_options = request.option::<ChatRequestOptions>();
     let all_messages = &request.messages;
 
-    // Extract system messages (all concatenated into one system instruction).
-    let system_instruction = join_system_messages(all_messages).map(|text| SystemContent {
+    // Gemini has a single `systemInstruction` field. Join every `req.system`
+    // entry with "\n\n" into one text part. Typed `SystemOptions` are
+    // dropped — see module docs.
+    let system_instruction = join_system_texts(&request.system).map(|text| SystemContent {
         parts: vec![RequestPart::Text { text }],
     });
 
@@ -320,9 +334,6 @@ pub(crate) fn to_api_request(request: &ChatRequest) -> Result<GenerateContentReq
 
 fn push_message_content(raw_contents: &mut Vec<Content>, msg: &Message) -> Result<()> {
     match msg {
-        Message::System { .. } => {
-            // Handled above as system_instruction.
-        }
         Message::User { content, .. } => {
             let parts = convert_user_content(content)?;
             raw_contents.push(Content {
@@ -486,24 +497,22 @@ fn convert_assistant_content(content: &[ContentBlock]) -> Result<Vec<RequestPart
     Ok(parts)
 }
 
-fn join_system_messages(messages: &[Message]) -> Option<String> {
-    let mut joined = String::new();
+/// Join every `req.system` entry into a single string.
+///
+/// Segments are separated by `"\n\n"`. Empty segments are filtered out so
+/// they don't leak onto the wire as stray separators. Returns `None` when
+/// no non-empty segments are present.
+fn join_system_texts(system: &[anyllm::SystemPrompt]) -> Option<String> {
+    let segments: Vec<&str> = system
+        .iter()
+        .map(|prompt| prompt.content.as_str())
+        .filter(|s| !s.is_empty())
+        .collect();
 
-    for message in messages {
-        let Message::System { content, .. } = message else {
-            continue;
-        };
-
-        if !joined.is_empty() {
-            joined.push_str("\n\n");
-        }
-        joined.push_str(content);
-    }
-
-    if joined.is_empty() {
+    if segments.is_empty() {
         None
     } else {
-        Some(joined)
+        Some(segments.join("\n\n"))
     }
 }
 
@@ -919,14 +928,8 @@ mod tests {
     #[test]
     fn concatenates_multiple_system_messages() {
         let req = ChatRequest::new("gemini-2.0-flash")
-            .message(Message::System {
-                content: "First instruction.".to_string(),
-                extensions: None,
-            })
-            .message(Message::System {
-                content: "Second instruction.".to_string(),
-                extensions: None,
-            })
+            .system("First instruction.")
+            .system("Second instruction.")
             .message(Message::user("Hi"));
 
         let api_req = to_api_request(&req).unwrap();
@@ -1768,6 +1771,65 @@ mod tests {
         assert_eq!(
             parse_finish_reason("FINISH_REASON_UNSPECIFIED"),
             FinishReason::Other("FINISH_REASON_UNSPECIFIED".into())
+        );
+    }
+
+    #[test]
+    fn req_system_prompt_emitted_as_system_instruction() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gemini-1.5-pro").user("hi");
+        req.system.push(SystemPrompt::new("Be concise"));
+
+        let api_req = to_api_request(&req).unwrap();
+        let si = api_req
+            .system_instruction
+            .as_ref()
+            .expect("system_instruction");
+        match &si.parts[0] {
+            RequestPart::Text { text } => assert_eq!(text, "Be concise"),
+            other => panic!("expected Text, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn req_system_multiple_prompts_joined_with_double_newline() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gemini-1.5-pro").user("hi");
+        req.system.push(SystemPrompt::new("A"));
+        req.system.push(SystemPrompt::new("B"));
+        req.system.push(SystemPrompt::new("C"));
+
+        let api_req = to_api_request(&req).unwrap();
+        let si = api_req
+            .system_instruction
+            .as_ref()
+            .expect("system_instruction");
+        match &si.parts[0] {
+            RequestPart::Text { text } => assert_eq!(text, "A\n\nB\n\nC"),
+            other => panic!("expected Text, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn req_system_empty_emits_no_system_instruction() {
+        let req = ChatRequest::new("gemini-1.5-pro").user("hi");
+        let api_req = to_api_request(&req).unwrap();
+        assert!(api_req.system_instruction.is_none());
+    }
+
+    #[test]
+    fn req_system_empty_content_elided_from_system_instruction() {
+        use anyllm::SystemPrompt;
+
+        let mut req = ChatRequest::new("gemini-1.5-pro").user("hi");
+        req.system.push(SystemPrompt::new(""));
+
+        let api_req = to_api_request(&req).unwrap();
+        assert!(
+            api_req.system_instruction.is_none(),
+            "empty content should not produce a systemInstruction"
         );
     }
 }

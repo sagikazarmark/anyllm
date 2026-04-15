@@ -65,9 +65,9 @@ pub use chat::{
     CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FallbackChatProvider,
     FinishReason, ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall,
     ReasoningConfig, ReasoningEffort, ResponseFormat, RetryPolicy, RetryingChatProvider,
-    SingleResponseStream, StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent, Tool,
-    ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent, UsageMetadataMode, UserContent,
-    UserMessageRef,
+    SingleResponseStream, StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent,
+    SystemOptions, SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent,
+    UsageMetadataMode, UserContent, UserMessageRef,
 };
 #[cfg(any(test, feature = "mock"))]
 pub use chat::{
@@ -111,7 +111,7 @@ pub mod prelude {
         FallbackChatProvider, FinishReason, ImageSource, Message, OwnedToolCall, ProviderIdentity,
         ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
         RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
-        Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
+        SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]
