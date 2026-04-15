@@ -11,6 +11,7 @@
 //! in this shared API.
 
 use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::{CapabilitySupport, ProviderIdentity, RequestOptions, ResponseMetadata, Result, Usage};
@@ -260,6 +261,97 @@ where
     }
 }
 
+/// A type-erased embedding provider for dynamic dispatch.
+///
+/// Wraps any `T: EmbeddingProvider + 'static` behind a vtable, boxing the
+/// async method future. Mirrors [`crate::DynChatProvider`].
+#[derive(Clone)]
+pub struct DynEmbeddingProvider(Arc<dyn EmbeddingProviderErased>);
+
+impl DynEmbeddingProvider {
+    /// Erase a concrete provider into a `DynEmbeddingProvider`.
+    #[must_use]
+    pub fn new<T>(provider: T) -> Self
+    where
+        T: EmbeddingProvider + 'static,
+    {
+        Self(Arc::new(provider))
+    }
+}
+
+impl<T> From<Arc<T>> for DynEmbeddingProvider
+where
+    T: EmbeddingProvider + 'static,
+{
+    fn from(provider: Arc<T>) -> Self {
+        Self(provider)
+    }
+}
+
+impl std::fmt::Debug for DynEmbeddingProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DynEmbeddingProvider")
+            .field("provider", &self.0.provider_name())
+            .finish()
+    }
+}
+
+impl ProviderIdentity for DynEmbeddingProvider {
+    fn provider_name(&self) -> &'static str {
+        self.0.provider_name()
+    }
+}
+
+impl EmbeddingProvider for DynEmbeddingProvider {
+    async fn embed(&self, request: &EmbeddingRequest) -> Result<EmbeddingResponse> {
+        self.0.embed_erased(request).await
+    }
+
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        self.0.embedding_capability_erased(model, capability)
+    }
+}
+
+/// Object-safe internal trait that manually boxes the async `embed` future.
+///
+/// Sealed by the blanket impl for `T: EmbeddingProvider`.
+trait EmbeddingProviderErased: ProviderIdentity {
+    fn embed_erased<'a>(
+        &'a self,
+        request: &'a EmbeddingRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<EmbeddingResponse>> + Send + 'a>>;
+
+    fn embedding_capability_erased(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport;
+}
+
+impl<T> EmbeddingProviderErased for T
+where
+    T: EmbeddingProvider,
+{
+    fn embed_erased<'a>(
+        &'a self,
+        request: &'a EmbeddingRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<EmbeddingResponse>> + Send + 'a>> {
+        Box::pin(EmbeddingProvider::embed(self, request))
+    }
+
+    fn embedding_capability_erased(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        EmbeddingProvider::embedding_capability(self, model, capability)
+    }
+}
+
 #[cfg(test)]
 mod request_tests {
     use super::*;
@@ -453,5 +545,70 @@ mod provider_tests {
             Minimal.embedding_capability("any", EmbeddingCapability::BatchInput),
             CapabilitySupport::Unknown
         );
+    }
+}
+
+#[cfg(test)]
+mod dyn_tests {
+    use super::*;
+    use crate::ProviderIdentity;
+    use std::sync::Arc;
+
+    struct DynDemo {
+        tag: &'static str,
+    }
+
+    impl ProviderIdentity for DynDemo {
+        fn provider_name(&self) -> &'static str {
+            self.tag
+        }
+    }
+
+    impl EmbeddingProvider for DynDemo {
+        async fn embed(&self, request: &EmbeddingRequest) -> crate::Result<EmbeddingResponse> {
+            let inputs = request.inputs.len();
+            Ok(EmbeddingResponse::new(vec![vec![0.0; 4]; inputs]))
+        }
+
+        fn embedding_capability(
+            &self,
+            _model: &str,
+            capability: EmbeddingCapability,
+        ) -> CapabilitySupport {
+            match capability {
+                EmbeddingCapability::BatchInput => CapabilitySupport::Supported,
+                EmbeddingCapability::OutputDimensions => CapabilitySupport::Unsupported,
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn dyn_provider_from_concrete_forwards_calls() {
+        let provider = DynEmbeddingProvider::new(DynDemo { tag: "dyn-embed" });
+        let request = EmbeddingRequest::new("demo").inputs(["a", "b"]);
+        let response = provider.embed(&request).await.unwrap();
+        assert_eq!(response.embeddings.len(), 2);
+        assert_eq!(provider.provider_name(), "dyn-embed");
+        assert_eq!(
+            provider.embedding_capability("demo", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Supported
+        );
+    }
+
+    #[tokio::test]
+    async fn dyn_provider_from_arc_is_cloneable() {
+        let provider: DynEmbeddingProvider = Arc::new(DynDemo { tag: "arc-embed" }).into();
+        let cloned = provider.clone();
+        let request = EmbeddingRequest::new("demo").input("x");
+        assert_eq!(cloned.embed(&request).await.unwrap().embeddings.len(), 1);
+        assert_eq!(cloned.provider_name(), "arc-embed");
+    }
+
+    #[test]
+    fn dyn_provider_debug_includes_provider_name() {
+        let provider = DynEmbeddingProvider::new(DynDemo { tag: "debug-embed" });
+        let debug = format!("{provider:?}");
+        assert!(debug.contains("DynEmbeddingProvider"));
+        assert!(debug.contains("debug-embed"));
     }
 }
