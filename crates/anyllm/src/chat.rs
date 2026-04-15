@@ -15,6 +15,8 @@ mod response;
 mod retry;
 mod stream;
 mod tool;
+#[cfg(feature = "tracing")]
+mod tracing;
 
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
 pub use fallback::FallbackChatProvider;
@@ -30,6 +32,8 @@ pub use stream::{
     StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
 };
 pub use tool::{Tool, ToolChoice};
+#[cfg(feature = "tracing")]
+pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
 
 /// Core trait for LLM chat completion providers.
 ///

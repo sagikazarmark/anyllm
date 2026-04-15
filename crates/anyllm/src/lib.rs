@@ -46,11 +46,6 @@ mod options;
 mod usage;
 mod utils;
 
-#[cfg(feature = "tracing")]
-mod tracing;
-#[cfg(feature = "tracing")]
-pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
-
 pub use chat::{
     AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
     ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream,
@@ -61,6 +56,8 @@ pub use chat::{
     StreamCompleteness, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolMessageRef,
     ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
 };
+#[cfg(feature = "tracing")]
+pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
     EmbeddingRequest, EmbeddingResponse,
