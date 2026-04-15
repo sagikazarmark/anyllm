@@ -11,7 +11,6 @@ mod request;
 mod response;
 mod retry;
 mod stream;
-#[allow(dead_code)] // exports land in Task 2
 mod system;
 mod tool;
 
@@ -42,6 +41,7 @@ pub use stream::{
     ChatStream, ChatStreamExt, CollectedResponse, SingleResponseStream, StreamBlockType,
     StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
 };
+pub use system::{SystemOptions, SystemPrompt};
 pub use tool::{Tool, ToolChoice};
 
 #[cfg(any(test, feature = "mock"))]

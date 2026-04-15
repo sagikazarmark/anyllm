@@ -9,7 +9,72 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::fmt;
 
+use serde::{Deserialize, Serialize};
+
 type ErasedAny = dyn Any + Send + Sync;
+
+/// A single request-level system instruction.
+///
+/// Holds plain-text instruction content plus a typed [`SystemOptions`] bag
+/// for provider-specific per-prompt metadata (such as Anthropic
+/// `cache_control`).
+///
+/// Serializes as `{"content": "..."}` — typed options are skipped because
+/// their values are erased and cannot be re-expressed in JSON portably.
+/// This matches the lossy serde treatment of
+/// [`RequestOptions`](crate::RequestOptions) in `ChatRequestRecord`.
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemPrompt {
+    /// System prompt text.
+    pub content: String,
+
+    /// Typed provider-specific options for this prompt.
+    #[serde(skip, default)]
+    pub options: SystemOptions,
+}
+
+impl SystemPrompt {
+    /// Construct a system prompt from plain text.
+    #[must_use]
+    pub fn new(content: impl Into<String>) -> Self {
+        Self {
+            content: content.into(),
+            options: SystemOptions::new(),
+        }
+    }
+
+    /// Insert a typed provider-specific option.
+    #[must_use]
+    pub fn with_option<T>(mut self, value: T) -> Self
+    where
+        T: Clone + Send + Sync + 'static,
+    {
+        self.options.insert(value);
+        self
+    }
+
+    /// Borrow a typed provider-specific option by type.
+    #[must_use]
+    pub fn option<T>(&self) -> Option<&T>
+    where
+        T: Send + Sync + 'static,
+    {
+        self.options.get::<T>()
+    }
+}
+
+impl From<&str> for SystemPrompt {
+    fn from(value: &str) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<String> for SystemPrompt {
+    fn from(value: String) -> Self {
+        Self::new(value)
+    }
+}
 
 /// Type-erased bag of per-prompt options keyed by Rust type.
 ///
@@ -226,5 +291,58 @@ mod tests {
             c.0 = 99;
         }
         assert_eq!(opts.get::<Count>(), Some(&Count(99)));
+    }
+
+    #[test]
+    fn system_prompt_new_preserves_content() {
+        let p = SystemPrompt::new("Be concise");
+        assert_eq!(p.content, "Be concise");
+        assert!(p.options.is_empty());
+    }
+
+    #[test]
+    fn system_prompt_from_str_and_string() {
+        let a: SystemPrompt = "a".into();
+        let b: SystemPrompt = String::from("b").into();
+        assert_eq!(a.content, "a");
+        assert_eq!(b.content, "b");
+    }
+
+    #[test]
+    fn system_prompt_with_option_round_trips() {
+        let p = SystemPrompt::new("Cached preamble").with_option(Flag(true));
+        assert_eq!(p.content, "Cached preamble");
+        assert_eq!(p.option::<Flag>(), Some(&Flag(true)));
+    }
+
+    #[test]
+    fn system_prompt_with_multiple_options() {
+        let p = SystemPrompt::new("x")
+            .with_option(Flag(true))
+            .with_option(Count(5));
+        assert_eq!(p.option::<Flag>(), Some(&Flag(true)));
+        assert_eq!(p.option::<Count>(), Some(&Count(5)));
+    }
+
+    #[test]
+    fn system_prompt_clone_preserves_options() {
+        let p = SystemPrompt::new("x").with_option(Flag(true));
+        let c = p.clone();
+        assert_eq!(c.option::<Flag>(), Some(&Flag(true)));
+    }
+
+    #[test]
+    fn system_prompt_serde_omits_options() {
+        let p = SystemPrompt::new("X").with_option(Flag(true));
+        let json = serde_json::to_value(&p).unwrap();
+        assert_eq!(json, serde_json::json!({"content": "X"}));
+    }
+
+    #[test]
+    fn system_prompt_serde_deserialize_defaults_options_empty() {
+        let json = serde_json::json!({"content": "Y"});
+        let p: SystemPrompt = serde_json::from_value(json).unwrap();
+        assert_eq!(p.content, "Y");
+        assert!(p.options.is_empty());
     }
 }
