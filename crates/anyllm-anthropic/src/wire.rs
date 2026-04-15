@@ -1711,10 +1711,12 @@ mod tests {
 
         let api_req = try_from_request(&req).unwrap();
         let value: serde_json::Value = serde_json::to_value(&api_req).unwrap();
-        assert!(
-            value.get("system").map_or(true, |s| s
-                .as_array()
-                .map_or(true, |a| a.is_empty())),
+        let system_len = value
+            .get("system")
+            .and_then(|s| s.as_array())
+            .map_or(0, Vec::len);
+        assert_eq!(
+            system_len, 0,
             "empty-content prompt should be filtered, got {value:?}"
         );
     }
