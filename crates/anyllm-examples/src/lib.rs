@@ -1,6 +1,6 @@
 //! Runnable provider-backed examples for `anyllm`.
 
-use anyllm::{DynChatProvider, Error, Result};
+use anyllm::{DynChatProvider, DynEmbeddingProvider, Error, Result};
 use anyllm_anthropic::Provider as Anthropic;
 use anyllm_gemini::Provider as Gemini;
 use anyllm_openai::Provider as OpenAI;
@@ -191,6 +191,208 @@ pub fn load_provider_for_example(example_name: &str, args: &str) -> Result<Loade
 pub fn print_provider_banner(target: &LoadedProvider) {
     eprintln!(
         "using provider={} model={}",
+        target.kind.as_str(),
+        target.model
+    );
+    eprintln!("required env: {}", target.credential_env);
+    if !target.optional_envs.is_empty() {
+        eprintln!("optional envs: {}", target.optional_envs.join(", "));
+    }
+    eprintln!("model override env: {}", target.model_env);
+}
+
+// ---------------------------------------------------------------------------
+// Embedding provider loader
+//
+// Anthropic has no public embedding API, so the embedding loader supports
+// only OpenAI and Gemini. The shape mirrors the chat loader above.
+// ---------------------------------------------------------------------------
+
+/// Providers with supported embedding APIs in this workspace.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EmbeddingProviderKind {
+    Gemini,
+    OpenAI,
+}
+
+pub const ALL_EMBEDDING_PROVIDER_KINDS: [EmbeddingProviderKind; 2] =
+    [EmbeddingProviderKind::Gemini, EmbeddingProviderKind::OpenAI];
+
+pub struct LoadedEmbeddingProvider {
+    pub provider: DynEmbeddingProvider,
+    pub kind: EmbeddingProviderKind,
+    pub model: String,
+    pub credential_env: &'static str,
+    pub optional_envs: &'static [&'static str],
+    pub model_env: &'static str,
+}
+
+impl EmbeddingProviderKind {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Gemini => "gemini",
+            Self::OpenAI => "openai",
+        }
+    }
+
+    #[must_use]
+    pub fn default_model(self) -> &'static str {
+        match self {
+            Self::Gemini => "gemini-embedding-001",
+            Self::OpenAI => "text-embedding-3-small",
+        }
+    }
+
+    #[must_use]
+    pub fn credential_env(self) -> &'static str {
+        match self {
+            Self::Gemini => "GEMINI_API_KEY",
+            Self::OpenAI => "OPENAI_API_KEY",
+        }
+    }
+
+    #[must_use]
+    pub fn optional_envs(self) -> &'static [&'static str] {
+        match self {
+            Self::Gemini => &["GEMINI_BASE_URL"],
+            Self::OpenAI => &["OPENAI_BASE_URL", "OPENAI_ORG_ID", "OPENAI_PROJECT_ID"],
+        }
+    }
+
+    #[must_use]
+    pub fn model_env(self) -> &'static str {
+        match self {
+            Self::Gemini => "GEMINI_EMBEDDING_MODEL",
+            Self::OpenAI => "OPENAI_EMBEDDING_MODEL",
+        }
+    }
+
+    pub fn parse(value: &str) -> Result<Self> {
+        match value {
+            "gemini" => Ok(Self::Gemini),
+            "openai" => Ok(Self::OpenAI),
+            "anthropic" => Err(Error::InvalidRequest(
+                "anthropic does not expose an embedding API; use openai or gemini".into(),
+            )),
+            other => Err(Error::InvalidRequest(format!(
+                "unsupported PROVIDER={other}; expected one of: openai, gemini"
+            ))),
+        }
+    }
+}
+
+fn configured_embedding_provider_kinds() -> Vec<EmbeddingProviderKind> {
+    ALL_EMBEDDING_PROVIDER_KINDS
+        .into_iter()
+        .filter(|kind| {
+            std::env::var(kind.credential_env())
+                .ok()
+                .is_some_and(|value| !value.trim().is_empty())
+        })
+        .collect()
+}
+
+fn embedding_provider_env_summary(kind: EmbeddingProviderKind) -> String {
+    let optional_envs = if kind.optional_envs().is_empty() {
+        "none".to_string()
+    } else {
+        kind.optional_envs().join(", ")
+    };
+
+    format!(
+        "{} => credential: {}, optional: {}, model override: {}",
+        kind.as_str(),
+        kind.credential_env(),
+        optional_envs,
+        kind.model_env()
+    )
+}
+
+fn embedding_usage_help(example_name: &str, args: &str) -> String {
+    let provider_help = ALL_EMBEDDING_PROVIDER_KINDS
+        .into_iter()
+        .map(embedding_provider_env_summary)
+        .collect::<Vec<_>>()
+        .join("; ");
+
+    format!(
+        "Usage: PROVIDER=<openai|gemini> cargo run -p anyllm-examples --example {example_name} -- {args}\nProvider envs: {provider_help}\nIf PROVIDER is unset, the loader auto-selects only when exactly one provider credential is configured."
+    )
+}
+
+#[must_use]
+pub fn embedding_usage(example_name: &str, args: &str) -> String {
+    embedding_usage_help(example_name, args)
+}
+
+pub fn load_embedding_provider(kind: EmbeddingProviderKind) -> Result<LoadedEmbeddingProvider> {
+    let model = std::env::var(kind.model_env())
+        .ok()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| kind.default_model().to_string());
+
+    let provider = match kind {
+        EmbeddingProviderKind::Gemini => DynEmbeddingProvider::new(Gemini::from_env()?),
+        EmbeddingProviderKind::OpenAI => DynEmbeddingProvider::new(OpenAI::from_env()?),
+    };
+
+    Ok(LoadedEmbeddingProvider {
+        provider,
+        kind,
+        model,
+        credential_env: kind.credential_env(),
+        optional_envs: kind.optional_envs(),
+        model_env: kind.model_env(),
+    })
+}
+
+fn missing_embedding_provider_selection_error() -> Error {
+    Error::InvalidRequest(
+        "PROVIDER is not set and no embedding provider credentials were found".into(),
+    )
+}
+
+fn ambiguous_embedding_provider_selection_error(kinds: &[EmbeddingProviderKind]) -> Error {
+    Error::InvalidRequest(format!(
+        "PROVIDER is not set and multiple embedding providers are configured ({}). Set PROVIDER explicitly",
+        kinds
+            .iter()
+            .map(|kind| kind.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
+}
+
+pub fn load_embedding_provider_from_env() -> Result<LoadedEmbeddingProvider> {
+    if let Ok(provider) = std::env::var("PROVIDER") {
+        return load_embedding_provider(EmbeddingProviderKind::parse(provider.trim())?);
+    }
+
+    let configured = configured_embedding_provider_kinds();
+    match configured.as_slice() {
+        [kind] => load_embedding_provider(*kind),
+        [] => Err(missing_embedding_provider_selection_error()),
+        kinds => Err(ambiguous_embedding_provider_selection_error(kinds)),
+    }
+}
+
+pub fn load_embedding_provider_for_example(
+    example_name: &str,
+    args: &str,
+) -> Result<LoadedEmbeddingProvider> {
+    load_embedding_provider_from_env().map_err(|err| match err {
+        Error::InvalidRequest(message) => Error::InvalidRequest(format!(
+            "{message}. {}",
+            embedding_usage_help(example_name, args)
+        )),
+        other => other,
+    })
+}
+
+pub fn print_embedding_provider_banner(target: &LoadedEmbeddingProvider) {
+    eprintln!(
+        "using embedding provider={} model={}",
         target.kind.as_str(),
         target.model
     );

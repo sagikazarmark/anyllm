@@ -1,6 +1,9 @@
 use anyllm::prelude::*;
 use anyllm::{Error, Result, StreamCollector, Tool, ToolChoice};
-use anyllm_examples::{ALL_PROVIDER_KINDS, ProviderKind, load_provider};
+use anyllm_examples::{
+    ALL_PROVIDER_KINDS, EmbeddingProviderKind, LoadedEmbeddingProvider, ProviderKind,
+    load_embedding_provider, load_provider,
+};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::json;
@@ -141,6 +144,39 @@ async fn run_live_tool_roundtrip(target: &anyllm_examples::LoadedProvider) -> Re
     Ok(())
 }
 
+fn embedding_kind_for(kind: ProviderKind) -> Option<EmbeddingProviderKind> {
+    match kind {
+        ProviderKind::OpenAI => Some(EmbeddingProviderKind::OpenAI),
+        ProviderKind::Gemini => Some(EmbeddingProviderKind::Gemini),
+        ProviderKind::Anthropic => None,
+    }
+}
+
+async fn run_live_embed(target: &LoadedEmbeddingProvider) -> Result<()> {
+    let inputs = [
+        "anyllm live embedding smoke input A".to_string(),
+        "anyllm live embedding smoke input B".to_string(),
+    ];
+    let request = EmbeddingRequest::new(&target.model).inputs(inputs.iter().cloned());
+    let response = target.provider.embed(&request).await?;
+
+    assert_eq!(
+        response.embeddings.len(),
+        inputs.len(),
+        "expected embedding count to match input count"
+    );
+    let dim = response.embeddings[0].len();
+    assert!(dim > 0, "expected non-empty embedding vector");
+    for vector in &response.embeddings {
+        assert_eq!(
+            vector.len(),
+            dim,
+            "all embedding vectors should share the same length"
+        );
+    }
+    Ok(())
+}
+
 async fn run_live_extract(target: &anyllm_examples::LoadedProvider) -> Result<()> {
     let request = ChatRequest::new(&target.model)
         .system(
@@ -190,6 +226,17 @@ async fn live_http_providers_smoke() -> Result<()> {
         run_live_stream(&target).await?;
         run_live_tool_roundtrip(&target).await?;
         run_live_extract(&target).await?;
+
+        if let Some(embedding_kind) = embedding_kind_for(target.kind) {
+            let embedding_target = load_embedding_provider(embedding_kind)?;
+            eprintln!(
+                "running live embedding smoke check for provider={} model={}",
+                embedding_target.kind.as_str(),
+                embedding_target.model
+            );
+            run_live_embed(&embedding_target).await?;
+        }
+
         executed += 1;
     }
 

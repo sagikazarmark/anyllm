@@ -29,9 +29,9 @@ suite at a running smoke endpoint.
 
 Each provider also supports a model override env var used by these examples:
 
-- OpenAI: `OPENAI_MODEL`
-- Anthropic: `ANTHROPIC_MODEL`
-- Gemini: `GEMINI_MODEL`
+- OpenAI: `OPENAI_MODEL` (chat), `OPENAI_EMBEDDING_MODEL` (embedding)
+- Anthropic: `ANTHROPIC_MODEL` (chat only — no embedding API)
+- Gemini: `GEMINI_MODEL` (chat), `GEMINI_EMBEDDING_MODEL` (embedding)
 
 If `PROVIDER` is unset, the loader auto-selects only when exactly one provider
 credential env var is configured. Otherwise it fails fast and tells you to set
@@ -39,11 +39,17 @@ credential env var is configured. Otherwise it fails fast and tells you to set
 
 ## Examples
 
+Chat examples (all three providers):
+
 - `provider_chat`: one-shot request/response
 - `provider_stream`: normalized streaming text and metadata events
 - `provider_tools`: tool-call -> tool-result -> follow-up answer loop
 - `provider_extract`: env-driven structured extraction across providers
 - `record_replay`: portable request/response recording and replay
+
+Embedding examples (OpenAI and Gemini only — Anthropic has no embedding API):
+
+- `provider_embedding`: batch text embedding with vector preview
 
 Example commands:
 
@@ -55,6 +61,8 @@ PROVIDER=openai cargo run -p anyllm-examples --example provider_stream -- "Expla
 PROVIDER=openai cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
 PROVIDER=openai cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents"
 PROVIDER=openai cargo run -p anyllm-examples --example record_replay -- "Summarize this failure"
+PROVIDER=openai cargo run -p anyllm-examples --example provider_embedding -- "Hello embeddings" "Second input"
+PROVIDER=gemini cargo run -p anyllm-examples --example provider_embedding -- "Hello embeddings" "Second input"
 ```
 
 ## Live tests
