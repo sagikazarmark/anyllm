@@ -95,7 +95,9 @@ impl anyllm::ChatProvider for Provider {
             self.builtin_chat_capability(model, capability)
         }
     }
+}
 
+impl anyllm::ProviderIdentity for Provider {
     fn provider_name(&self) -> &'static str {
         self.inner.provider_name
     }

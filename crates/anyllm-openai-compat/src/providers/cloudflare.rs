@@ -97,7 +97,7 @@ impl Cloudflare {
 #[cfg(test)]
 mod tests {
     use super::Cloudflare;
-    use anyllm::ChatProvider;
+    use anyllm::ProviderIdentity;
 
     #[test]
     fn new_rejects_blank_account_id() {

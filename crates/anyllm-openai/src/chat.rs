@@ -1,7 +1,8 @@
 #[cfg(feature = "extract")]
 use anyllm::ExtractExt;
 use anyllm::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream, Result,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream,
+    ProviderIdentity, Result,
 };
 use anyllm_openai_compat::{extract_request_id, extract_retry_after, send_chat_completion_request};
 
@@ -103,7 +104,9 @@ impl ChatProvider for Provider {
             self.builtin_chat_capability(model, capability)
         }
     }
+}
 
+impl ProviderIdentity for Provider {
     fn provider_name(&self) -> &'static str {
         "openai"
     }
