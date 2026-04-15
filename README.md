@@ -7,12 +7,12 @@
 
 **Provider-agnostic LLM abstractions and adapters for Rust.**
 
-`anyllm` allows building against chat-style LLM APIs without
+`anyllm` allows building against LLM APIs — chat and embeddings — without
 hard-coding the rest of your application to one provider SDK.
 
 The core of the project is the [`anyllm`](crates/anyllm) crate: a small, low-level
-abstraction layer for shared request and response types, streaming, tool calls,
-and a few wrappers.
+abstraction layer with shared request and response types for both chat (streaming,
+tool calls, structured output) and embeddings, plus a handful of wrappers.
 
 The intent is to keep application-facing code portable and keep
 provider-specific request translation, transport, and parsing in provider
@@ -34,10 +34,12 @@ orchestration runtime.
 
 | Crate | Role | Notes |
 | --- | --- | --- |
-| [`anyllm`](crates/anyllm) | Core abstraction | Shared request/response types, streaming, tools, and wrappers |
+| [`anyllm`](crates/anyllm) | Core abstraction | Shared chat + embedding request/response types, streaming, tools, and wrappers |
 | [`anyllm-conformance`](crates/anyllm-conformance) | Test support | Fixture-based conformance helpers and a local mock HTTP server for provider crates |
-| [`anyllm-openai`](crates/anyllm-openai) | Provider adapter | OpenAI chat provider built on the shared `anyllm` surface |
-| [`anyllm-openai-compat`](crates/anyllm-openai-compat) | Provider toolkit | Reusable transport and normalization helpers for OpenAI-compatible providers |
+| [`anyllm-openai`](crates/anyllm-openai) | Provider adapter | OpenAI chat + embedding provider built on the shared `anyllm` surface |
+| [`anyllm-anthropic`](crates/anyllm-anthropic) | Provider adapter | Anthropic Messages API chat provider |
+| [`anyllm-gemini`](crates/anyllm-gemini) | Provider adapter | Google Gemini chat + embedding provider |
+| [`anyllm-openai-compat`](crates/anyllm-openai-compat) | Provider toolkit | Reusable transport and normalization helpers for OpenAI-compatible providers (Cloudflare, etc.), with chat + embedding |
 
 ## Example
 
@@ -79,9 +81,12 @@ cargo run -p anyllm --example chat --features mock
 
 ## Providers
 
-| Provider | Crate | Status | Notes |
-| --- | --- | --- | --- |
-| OpenAI | [`anyllm-openai`](crates/anyllm-openai) | Available | OpenAI chat adapter with streaming, tools, and structured-output support hooks |
+| Provider | Crate | Chat | Embeddings | Notes |
+| --- | --- | --- | --- | --- |
+| OpenAI | [`anyllm-openai`](crates/anyllm-openai) | ✓ | ✓ | Streaming, tools, structured output; `/v1/embeddings` with optional dimensions |
+| Anthropic | [`anyllm-anthropic`](crates/anyllm-anthropic) | ✓ | — | Messages API with streaming, tools, and reasoning; no embeddings API yet |
+| Gemini | [`anyllm-gemini`](crates/anyllm-gemini) | ✓ | ✓ | `generateContent`/`streamGenerateContent` for chat; `batchEmbedContents` for embeddings |
+| OpenAI-compatible (Cloudflare, etc.) | [`anyllm-openai-compat`](crates/anyllm-openai-compat) | ✓ | ✓ | Generic provider for any OpenAI-compatible endpoint; includes a Cloudflare Workers AI factory |
 
 ## License
 

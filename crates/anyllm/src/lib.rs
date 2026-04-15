@@ -1,22 +1,40 @@
 #![warn(missing_docs)]
-//! Provider-agnostic chat completion primitives and adapters.
+//! Provider-agnostic chat and embedding primitives and adapters.
 //!
 //! The crate root exposes the common day-to-day API surface directly:
-//! [`ChatProvider`], [`ChatRequest`], [`ChatResponse`], [`Tool`], and related
-//! streaming and wrapper types.
+//! [`ChatProvider`], [`ChatRequest`], [`ChatResponse`], [`Tool`],
+//! [`EmbeddingProvider`], [`EmbeddingRequest`], [`EmbeddingResponse`], and
+//! related streaming and wrapper types.
 //!
 //! Use [`prelude`] when you want a compact import for typical application code.
 //! Reach for explicit root imports when writing libraries or examples that need
 //! to make advanced types like [`ChatRequestRecord`], [`ChatResponseRecord`],
 //! [`CollectedResponse`], or [`StreamCompleteness`] obvious at the callsite.
 //!
+//! ## Capabilities
+//!
+//! `anyllm` models each LLM capability as a sibling trait on top of a shared
+//! [`ProviderIdentity`] super-trait:
+//!
+//! - [`ChatProvider`] — one-shot and streaming chat completion
+//! - [`EmbeddingProvider`] — batch-oriented text embedding
+//!
+//! Providers implement whichever capabilities they support. A provider that
+//! only exposes chat only implements `ChatProvider`; one that exposes both
+//! implements both. Capability support queries share the [`CapabilitySupport`]
+//! enum across both traits.
+//!
 //! ## Portability Model
 //!
 //! `anyllm` aims to keep the common request/response path provider-agnostic,
 //! while still leaving explicit escape hatches for provider-specific features.
 //!
-//! The portable core is centered on [`ChatRequest`], [`ChatResponse`],
+//! The portable chat core is centered on [`ChatRequest`], [`ChatResponse`],
 //! [`Message`], [`ContentBlock`], [`Tool`], and the streaming event model.
+//! The portable embedding core is centered on [`EmbeddingRequest`],
+//! [`EmbeddingResponse`], and [`EmbeddingCapability`] — intentionally narrower,
+//! because the provider overlap on embedding features is narrower.
+//!
 //! These types intentionally expose their portable fields directly and pair
 //! them with fluent constructors/helpers so application and test code can build
 //! and adjust requests and responses without going through opaque builders.
