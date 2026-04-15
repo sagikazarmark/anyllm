@@ -5,7 +5,7 @@ use std::sync::Arc;
 use futures_core::Stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{ProviderIdentity, Result};
+use crate::{CapabilitySupport, ProviderIdentity, Result};
 
 mod content;
 #[cfg(feature = "extract")]
@@ -98,20 +98,6 @@ pub trait ChatProvider: ProviderIdentity {
     fn chat_capability(&self, _model: &str, _capability: ChatCapability) -> CapabilitySupport {
         CapabilitySupport::Unknown
     }
-}
-
-/// Support state for a provider/model capability query.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum CapabilitySupport {
-    /// The provider explicitly supports this capability for the queried model.
-    Supported,
-    /// The provider explicitly does not support this capability for the queried model.
-    Unsupported,
-    /// The provider does not provide a definitive answer for this capability.
-    ///
-    /// Treat this as "unknown, ask carefully" rather than as support.
-    #[default]
-    Unknown,
 }
 
 /// Portable chat features that a provider/model may support.

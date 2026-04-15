@@ -31,6 +31,7 @@
 //! [`ChatRequestRecord`] or [`ChatResponseRecord`] preserves the portable core,
 //! but typed provider-specific data may be dropped or flattened to JSON.
 
+mod capability;
 mod chat;
 mod embedding;
 mod error;
@@ -39,15 +40,16 @@ mod options;
 mod usage;
 mod utils;
 
+pub use capability::CapabilitySupport;
 pub use chat::{
-    AssistantMessageRef, CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider,
-    ChatProviderExt, ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream,
-    ChatStreamExt, CollectedResponse, ContentBlock, ContentPart, DynChatProvider,
-    FallbackChatProvider, FinishReason, ImageBlockRef, ImagePartRef, ImageSource, Message,
-    OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat, RetryPolicy,
-    RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector,
-    StreamCompleteness, StreamEvent, Tool, ToolCallRef, ToolChoice, ToolMessageRef,
-    ToolResultContent, UsageMetadataMode, UserContent, UserMessageRef,
+    AssistantMessageRef, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
+    ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream, ChatStreamExt,
+    CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FallbackChatProvider,
+    FinishReason, ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall,
+    ReasoningConfig, ReasoningEffort, ResponseFormat, RetryPolicy, RetryingChatProvider,
+    SingleResponseStream, StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent, Tool,
+    ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent, UsageMetadataMode, UserContent,
+    UserMessageRef,
 };
 #[cfg(any(test, feature = "mock"))]
 pub use chat::{
