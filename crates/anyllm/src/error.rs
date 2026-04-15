@@ -109,7 +109,7 @@ pub enum Error {
 
     /// Structured extraction failed after request execution.
     #[cfg(feature = "extract")]
-    Extract(Box<crate::extract::ExtractError>),
+    Extract(Box<crate::ExtractError>),
 }
 
 impl Error {
@@ -505,7 +505,7 @@ enum SerializedError {
     },
     #[cfg(feature = "extract")]
     Extract {
-        error: Box<crate::extract::ExtractError>,
+        error: Box<crate::ExtractError>,
     },
 }
 
@@ -917,12 +917,10 @@ mod tests {
     #[cfg(feature = "extract")]
     #[test]
     fn extract_errors_are_non_retryable_and_expose_source() {
-        let err = Error::Extract(Box::new(
-            crate::extract::ExtractError::MissingStructuredText {
-                mode: crate::extract::ExtractionMode::Native,
-                provider: "mock".into(),
-            },
-        ));
+        let err = Error::Extract(Box::new(crate::ExtractError::MissingStructuredText {
+            mode: crate::ExtractionMode::Native,
+            provider: "mock".into(),
+        }));
         assert!(!err.is_retryable());
         assert!(err.to_string().contains("extraction error"));
         assert!(std::error::Error::source(&err).is_some());

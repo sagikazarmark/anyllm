@@ -1,22 +1,40 @@
 #![warn(missing_docs)]
-//! Provider-agnostic chat completion primitives and adapters.
+//! Provider-agnostic chat and embedding primitives and adapters.
 //!
 //! The crate root exposes the common day-to-day API surface directly:
-//! [`ChatProvider`], [`ChatRequest`], [`ChatResponse`], [`Tool`], and related
-//! streaming and wrapper types.
+//! [`ChatProvider`], [`ChatRequest`], [`ChatResponse`], [`Tool`],
+//! [`EmbeddingProvider`], [`EmbeddingRequest`], [`EmbeddingResponse`], and
+//! related streaming and wrapper types.
 //!
 //! Use [`prelude`] when you want a compact import for typical application code.
 //! Reach for explicit root imports when writing libraries or examples that need
 //! to make advanced types like [`ChatRequestRecord`], [`ChatResponseRecord`],
 //! [`CollectedResponse`], or [`StreamCompleteness`] obvious at the callsite.
 //!
+//! ## Capabilities
+//!
+//! `anyllm` models each LLM capability as a sibling trait on top of a shared
+//! [`ProviderIdentity`] super-trait:
+//!
+//! - [`ChatProvider`] — one-shot and streaming chat completion
+//! - [`EmbeddingProvider`] — batch-oriented text embedding
+//!
+//! Providers implement whichever capabilities they support. A provider that
+//! only exposes chat only implements `ChatProvider`; one that exposes both
+//! implements both. Capability support queries share the [`CapabilitySupport`]
+//! enum across both traits.
+//!
 //! ## Portability Model
 //!
 //! `anyllm` aims to keep the common request/response path provider-agnostic,
 //! while still leaving explicit escape hatches for provider-specific features.
 //!
-//! The portable core is centered on [`ChatRequest`], [`ChatResponse`],
+//! The portable chat core is centered on [`ChatRequest`], [`ChatResponse`],
 //! [`Message`], [`ContentBlock`], [`Tool`], and the streaming event model.
+//! The portable embedding core is centered on [`EmbeddingRequest`],
+//! [`EmbeddingResponse`], and [`EmbeddingCapability`] — intentionally narrower,
+//! because the provider overlap on embedding features is narrower.
+//!
 //! These types intentionally expose their portable fields directly and pair
 //! them with fluent constructors/helpers so application and test code can build
 //! and adjust requests and responses without going through opaque builders.
@@ -31,71 +49,47 @@
 //! [`ChatRequestRecord`] or [`ChatResponseRecord`] preserves the portable core,
 //! but typed provider-specific data may be dropped or flattened to JSON.
 
+mod capability;
 mod chat;
-mod content;
 mod embedding;
 mod error;
-#[cfg(feature = "extract")]
-mod extract;
-mod fallback;
 mod identity;
-mod message;
-/// Mock providers for testing. Enable the `mock` feature to use these types
-/// as a library consumer. These types are not covered by the semver stability
-/// guarantee.
-#[cfg(any(test, feature = "mock"))]
-mod mock;
 mod options;
-mod request;
-mod response;
-mod retry;
-mod stream;
-mod tool;
 mod usage;
 mod utils;
 
-#[cfg(feature = "tracing")]
-mod tracing;
-#[cfg(feature = "tracing")]
-pub use tracing::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
-
+pub use capability::CapabilitySupport;
 pub use chat::{
-    CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
-    DynChatProvider,
+    AssistantMessageRef, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
+    ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream, ChatStreamExt,
+    CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FallbackChatProvider,
+    FinishReason, ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall,
+    ReasoningConfig, ReasoningEffort, ResponseFormat, RetryPolicy, RetryingChatProvider,
+    SingleResponseStream, StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent, Tool,
+    ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent, UsageMetadataMode, UserContent,
+    UserMessageRef,
 };
-pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
+#[cfg(any(test, feature = "mock"))]
+pub use chat::{
+    ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
+    MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+};
+#[cfg(feature = "extract")]
+pub use chat::{
+    ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
+    ExtractionRequest, Extractor,
+};
+#[cfg(feature = "tracing")]
+pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
+#[cfg(any(test, feature = "mock"))]
+pub use embedding::MockEmbeddingProvider;
 pub use embedding::{
     DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
     EmbeddingRequest, EmbeddingResponse,
 };
 pub use error::{Error, ErrorLog, Result, SerializationError};
-#[cfg(feature = "extract")]
-pub use extract::{
-    ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
-    ExtractionRequest, Extractor,
-};
-pub use fallback::FallbackChatProvider;
 pub use identity::ProviderIdentity;
-pub use message::{
-    AssistantMessageRef, ContentPart, ImagePartRef, ImageSource, Message, ToolMessageRef,
-    ToolResultContent, UserContent, UserMessageRef,
-};
-#[cfg(any(test, feature = "mock"))]
-pub use mock::{
-    ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder, MockResponse,
-    MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
-};
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
-pub use request::{
-    ChatRequest, ChatRequestRecord, ReasoningConfig, ReasoningEffort, ResponseFormat,
-};
-pub use response::{ChatResponse, ChatResponseRecord, FinishReason};
-pub use retry::{RetryPolicy, RetryingChatProvider};
-pub use stream::{
-    ChatStream, ChatStreamExt, CollectedResponse, SingleResponseStream, StreamBlockType,
-    StreamCollector, StreamCompleteness, StreamEvent, UsageMetadataMode,
-};
-pub use tool::{Tool, ToolChoice};
 pub use usage::Usage;
 
 /// Portable JSON object used for provider-specific escape hatches.
