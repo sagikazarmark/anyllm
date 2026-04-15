@@ -68,13 +68,13 @@ provider APIs.
 Run one provider:
 
 ```bash
-ANYLLM_LIVE_PROVIDER=openai cargo test -p anyllm-examples --test live_providers -- --nocapture --test-threads=1
+ANYLLM_LIVE_PROVIDER=openai cargo test -p anyllm-examples --test providers -- --nocapture --test-threads=1
 ```
 
 Run all configured providers:
 
 ```bash
-ANYLLM_LIVE_PROVIDER=all cargo test -p anyllm-examples --test live_providers -- --nocapture --test-threads=1
+ANYLLM_LIVE_PROVIDER=all cargo test -p anyllm-examples --test providers -- --nocapture --test-threads=1
 ```
 
 `ANYLLM_LIVE_PROVIDER=configured` is accepted as an alias for `all`.

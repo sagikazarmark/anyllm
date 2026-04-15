@@ -1,8 +1,7 @@
 use anyllm::{Error, Result};
 use anyllm_examples::{ALL_PROVIDER_KINDS, ProviderKind};
 
-const VALID_SELECTION_NAMES: &[&str] =
-    &["all", "configured", "openai", "anthropic", "gemini"];
+const VALID_SELECTION_NAMES: &[&str] = &["all", "configured", "openai", "anthropic", "gemini"];
 
 pub fn live_selection() -> Option<String> {
     std::env::var("ANYLLM_LIVE_PROVIDER")
