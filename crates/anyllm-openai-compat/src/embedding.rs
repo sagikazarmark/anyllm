@@ -18,8 +18,15 @@ pub struct EmbeddingsRequest {
     pub extra: ExtraMap,
 }
 
-/// Provider-specific extras applied to the OpenAI-style embedding request.
+/// Wire-level extras applied to the OpenAI-style embedding request.
+///
+/// This is the generic OpenAI-compatible shape used inside
+/// [`to_embeddings_request`]. Consumers writing provider crates (like
+/// `anyllm-openai`) typically expose their own typed options struct with only
+/// the fields that provider actually supports and translate into this one
+/// internally.
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct EmbeddingRequestOptions {
     /// Optional `user` field forwarded for abuse-prevention tracking.
     pub user: Option<String>,
