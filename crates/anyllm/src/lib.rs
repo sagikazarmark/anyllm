@@ -64,7 +64,7 @@ pub use chat::{
     DynChatProvider,
 };
 pub use content::{ContentBlock, ImageBlockRef, OwnedToolCall, ToolCallRef};
-pub use embedding::{EmbeddingCapability, EmbeddingRequest, EmbeddingResponse};
+pub use embedding::{EmbeddingCapability, EmbeddingProvider, EmbeddingRequest, EmbeddingResponse};
 pub use error::{Error, ErrorLog, Result, SerializationError};
 #[cfg(feature = "extract")]
 pub use extract::{
@@ -109,11 +109,12 @@ pub mod prelude {
     pub use crate::{
         CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
         ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
-        DynChatProvider, EmbeddingCapability, EmbeddingRequest, EmbeddingResponse, Error, ErrorLog,
-        ExtraMap, FallbackChatProvider, FinishReason, ImageSource, Message, OwnedToolCall,
-        ProviderIdentity, ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
-        RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
-        Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
+        DynChatProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingRequest,
+        EmbeddingResponse, Error, ErrorLog, ExtraMap, FallbackChatProvider, FinishReason,
+        ImageSource, Message, OwnedToolCall, ProviderIdentity, ReasoningConfig, ReasoningEffort,
+        ResponseFormat, Result, RetryPolicy, RetryingChatProvider, SingleResponseStream,
+        StreamBlockType, StreamCollector, StreamEvent, Tool, ToolCallRef, ToolChoice,
+        ToolResultContent, Usage, UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]

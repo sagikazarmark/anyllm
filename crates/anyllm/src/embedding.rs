@@ -10,7 +10,10 @@
 //! pooling should live in typed [`crate::RequestOptions`] entries rather than
 //! in this shared API.
 
-use crate::{RequestOptions, ResponseMetadata, Usage};
+use std::future::Future;
+use std::sync::Arc;
+
+use crate::{CapabilitySupport, ProviderIdentity, RequestOptions, ResponseMetadata, Result, Usage};
 
 /// A provider-agnostic embedding request.
 ///
@@ -178,6 +181,85 @@ pub enum EmbeddingCapability {
     OutputDimensions,
 }
 
+/// Core trait for providers that expose a text embedding API.
+///
+/// Implementations are batch-oriented. Callers that have a single input
+/// should use [`EmbeddingProviderExt::embed_text`].
+///
+/// Methods return `impl Future<…> + Send` so wrappers and dyn dispatch can
+/// rely on `Send` futures, matching [`crate::ChatProvider`].
+pub trait EmbeddingProvider: ProviderIdentity {
+    /// Send an embedding request and return ordered vectors.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`crate::Error`] on provider communication or decoding failures.
+    fn embed(
+        &self,
+        request: &EmbeddingRequest,
+    ) -> impl Future<Output = Result<EmbeddingResponse>> + Send;
+
+    /// Returns support information for a provider/model embedding capability.
+    fn embedding_capability(
+        &self,
+        _model: &str,
+        _capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        CapabilitySupport::Unknown
+    }
+}
+
+impl<T> EmbeddingProvider for &T
+where
+    T: EmbeddingProvider + ?Sized,
+{
+    async fn embed(&self, request: &EmbeddingRequest) -> Result<EmbeddingResponse> {
+        T::embed(*self, request).await
+    }
+
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        T::embedding_capability(*self, model, capability)
+    }
+}
+
+impl<T> EmbeddingProvider for Box<T>
+where
+    T: EmbeddingProvider + ?Sized,
+{
+    async fn embed(&self, request: &EmbeddingRequest) -> Result<EmbeddingResponse> {
+        T::embed(self.as_ref(), request).await
+    }
+
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        T::embedding_capability(self.as_ref(), model, capability)
+    }
+}
+
+impl<T> EmbeddingProvider for Arc<T>
+where
+    T: EmbeddingProvider + ?Sized,
+{
+    async fn embed(&self, request: &EmbeddingRequest) -> Result<EmbeddingResponse> {
+        T::embed(self.as_ref(), request).await
+    }
+
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        T::embedding_capability(self.as_ref(), model, capability)
+    }
+}
+
 #[cfg(test)]
 mod request_tests {
     use super::*;
@@ -267,5 +349,109 @@ mod response_tests {
         set.insert(EmbeddingCapability::BatchInput);
         set.insert(EmbeddingCapability::OutputDimensions);
         assert_eq!(set.len(), 2);
+    }
+}
+
+#[cfg(test)]
+mod provider_tests {
+    use super::*;
+    use crate::{ProviderIdentity, Result};
+    use std::sync::Arc;
+
+    struct StaticEmbeddingProvider {
+        response: EmbeddingResponse,
+    }
+
+    impl ProviderIdentity for StaticEmbeddingProvider {
+        fn provider_name(&self) -> &'static str {
+            "static-embed"
+        }
+    }
+
+    impl EmbeddingProvider for StaticEmbeddingProvider {
+        async fn embed(&self, _request: &EmbeddingRequest) -> Result<EmbeddingResponse> {
+            Ok(self.response.clone())
+        }
+
+        fn embedding_capability(
+            &self,
+            _model: &str,
+            capability: EmbeddingCapability,
+        ) -> CapabilitySupport {
+            match capability {
+                EmbeddingCapability::BatchInput => CapabilitySupport::Supported,
+                EmbeddingCapability::OutputDimensions => CapabilitySupport::Unsupported,
+            }
+        }
+    }
+
+    fn demo_provider() -> StaticEmbeddingProvider {
+        StaticEmbeddingProvider {
+            response: EmbeddingResponse::new(vec![vec![0.1, 0.2]]).model("demo"),
+        }
+    }
+
+    #[tokio::test]
+    async fn direct_impl_returns_response() {
+        let provider = demo_provider();
+        let request = EmbeddingRequest::new("demo").input("hello");
+        let response = provider.embed(&request).await.unwrap();
+        assert_eq!(response.embeddings, vec![vec![0.1, 0.2]]);
+    }
+
+    #[tokio::test]
+    async fn ref_forwards_embed() {
+        let provider = demo_provider();
+        let borrowed: &StaticEmbeddingProvider = &provider;
+        let request = EmbeddingRequest::new("demo").input("hello");
+        assert_eq!(
+            borrowed.embed(&request).await.unwrap().embeddings,
+            vec![vec![0.1, 0.2]]
+        );
+        assert_eq!(borrowed.provider_name(), "static-embed");
+    }
+
+    #[tokio::test]
+    async fn box_forwards_embed() {
+        let boxed: Box<StaticEmbeddingProvider> = Box::new(demo_provider());
+        let request = EmbeddingRequest::new("demo").input("hello");
+        assert_eq!(
+            boxed.embed(&request).await.unwrap().embeddings,
+            vec![vec![0.1, 0.2]]
+        );
+    }
+
+    #[tokio::test]
+    async fn arc_forwards_embed_and_capability() {
+        let arced: Arc<StaticEmbeddingProvider> = Arc::new(demo_provider());
+        let request = EmbeddingRequest::new("demo").input("hello");
+        assert_eq!(
+            arced.embed(&request).await.unwrap().embeddings,
+            vec![vec![0.1, 0.2]]
+        );
+        assert_eq!(
+            arced.embedding_capability("demo", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            arced.embedding_capability("demo", EmbeddingCapability::OutputDimensions),
+            CapabilitySupport::Unsupported
+        );
+    }
+
+    #[tokio::test]
+    async fn default_capability_method_returns_unknown() {
+        struct Minimal;
+        impl ProviderIdentity for Minimal {}
+        impl EmbeddingProvider for Minimal {
+            async fn embed(&self, _request: &EmbeddingRequest) -> Result<EmbeddingResponse> {
+                Ok(EmbeddingResponse::default())
+            }
+        }
+
+        assert_eq!(
+            Minimal.embedding_capability("any", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Unknown
+        );
     }
 }
