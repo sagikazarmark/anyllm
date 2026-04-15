@@ -10,6 +10,11 @@ fn model() -> String {
     std::env::var("CLOUDFLARE_MODEL").unwrap_or_else(|_| "@cf/meta/llama-3.1-8b-instruct".into())
 }
 
+fn embedding_model() -> String {
+    std::env::var("CLOUDFLARE_EMBEDDING_MODEL")
+        .unwrap_or_else(|_| "@cf/baai/bge-base-en-v1.5".into())
+}
+
 #[tokio::test]
 #[ignore]
 async fn basic_chat() {
@@ -51,4 +56,22 @@ async fn structured_output() {
 #[ignore]
 async fn extract() {
     e2e::extract(&make_provider(), &model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn basic_embed() {
+    e2e::basic_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn batch_embed() {
+    e2e::batch_embed(&make_provider(), &embedding_model()).await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn dimensions() {
+    e2e::dimensions(&make_provider(), &embedding_model(), 32).await;
 }
