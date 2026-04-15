@@ -615,10 +615,9 @@ mod tests {
         let requests = model.requests();
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].model, "mock-model");
-        assert_eq!(
-            requests[0].messages,
-            vec![Message::system("You are helpful"), Message::user("help me")]
-        );
+        assert_eq!(requests[0].system.len(), 1);
+        assert_eq!(requests[0].system[0].content, "You are helpful");
+        assert_eq!(requests[0].messages, vec![Message::user("help me")]);
     }
 
     #[tokio::test]

@@ -97,10 +97,11 @@ impl ChatRequest {
         self
     }
 
-    /// Shorthand for `.message(Message::system(content))`.
+    /// Append a system prompt. Accepts `&str`, `String`, or [`SystemPrompt`].
     #[must_use]
-    pub fn system(self, content: impl Into<String>) -> Self {
-        self.message(Message::system(content))
+    pub fn system(mut self, prompt: impl Into<SystemPrompt>) -> Self {
+        self.system.push(prompt.into());
+        self
     }
 
     /// Shorthand for `.message(Message::user(content))`.
@@ -687,9 +688,37 @@ mod tests {
             .user("Hello")
             .assistant("Hi");
 
-        assert_eq!(req.messages.len(), 3);
-        assert_eq!(req.messages[1], Message::user("Hello"));
-        assert_eq!(req.messages[2], Message::assistant("Hi"));
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "Be concise");
+        assert_eq!(req.messages.len(), 2);
+        assert_eq!(req.messages[0], Message::user("Hello"));
+        assert_eq!(req.messages[1], Message::assistant("Hi"));
+    }
+
+    #[test]
+    fn system_builder_accepts_str() {
+        let req = ChatRequest::new("gpt-4o").system("Hello");
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "Hello");
+        assert!(req.messages.is_empty());
+    }
+
+    #[test]
+    fn system_builder_accepts_system_prompt() {
+        let req = ChatRequest::new("claude-sonnet-4-5").system(SystemPrompt::new("X"));
+        assert_eq!(req.system[0].content, "X");
+        assert!(req.messages.is_empty());
+    }
+
+    #[test]
+    fn system_builder_appends_multiple() {
+        let req = ChatRequest::new("claude-sonnet-4-5")
+            .system("A")
+            .system(SystemPrompt::new("B"));
+        assert_eq!(req.system.len(), 2);
+        assert_eq!(req.system[0].content, "A");
+        assert_eq!(req.system[1].content, "B");
+        assert!(req.messages.is_empty());
     }
 
     #[test]
@@ -741,7 +770,9 @@ mod tests {
             .with_option(DemoOption { enabled: true });
 
         assert_eq!(req.model, "claude-3-opus");
-        assert_eq!(req.messages.len(), 2);
+        assert_eq!(req.system.len(), 1);
+        assert_eq!(req.system[0].content, "You are a helpful assistant");
+        assert_eq!(req.messages.len(), 1);
         assert_eq!(req.temperature, Some(0.7));
         assert_eq!(req.max_tokens, Some(4096));
         assert_eq!(req.top_p, Some(0.95));
