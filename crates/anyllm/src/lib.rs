@@ -82,8 +82,8 @@ pub use message::{
 };
 #[cfg(any(test, feature = "mock"))]
 pub use mock::{
-    ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
-    MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+    ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder, MockResponse,
+    MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
 };
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
 pub use request::{
@@ -122,8 +122,9 @@ pub mod prelude {
 
     #[cfg(any(test, feature = "mock"))]
     pub use crate::{
-        ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
-        MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+        ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder,
+        MockResponse, MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder,
+        MockToolRoundTrip,
     };
 
     #[cfg(feature = "extract")]
