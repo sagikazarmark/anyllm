@@ -622,13 +622,20 @@ mod tests {
     #[test]
     #[cfg(feature = "models-dev")]
     fn models_dev_resolver_integrates_with_provider() {
+        // Without the resolver, ImageInput returns Unknown from the builtin.
+        let bare = Provider::new("test-key").unwrap();
+        assert_eq!(
+            bare.chat_capability("gpt-4o", ChatCapability::ImageInput),
+            CapabilitySupport::Unknown,
+        );
+
+        // With the resolver installed, the snapshot should answer Supported.
         let provider = Provider::new("test-key")
             .unwrap()
             .with_chat_capabilities(models_dev_chat_capabilities().unwrap());
-
-        assert_ne!(
-            provider.chat_capability("gpt-4o", ChatCapability::ToolCalls),
-            CapabilitySupport::Unknown,
+        assert_eq!(
+            provider.chat_capability("gpt-4o", ChatCapability::ImageInput),
+            CapabilitySupport::Supported,
         );
     }
 
