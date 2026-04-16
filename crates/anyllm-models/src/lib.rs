@@ -28,7 +28,10 @@ use std::collections::HashMap;
 mod model;
 mod provider;
 
-pub use model::{Cost, Limit, Modalities, Model};
+pub use model::{
+    Cost, Experimental, ExperimentalMode, ExperimentalModeProvider, Interleaved, Limit, Modalities,
+    Model, ModelProvider, OverrideCost,
+};
 pub use provider::Provider;
 
 #[cfg(feature = "http")]

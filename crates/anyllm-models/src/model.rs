@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -52,14 +54,15 @@ pub struct Model {
     /// Model lifecycle status (e.g. `"beta"`, `"deprecated"`).
     pub status: Option<String>,
 
-    /// Provider-specific override hints (e.g. npm package routing).
-    pub provider: Option<Value>,
+    /// Provider-specific overrides for this model (e.g. alternative API
+    /// endpoint, SDK package, or request shape).
+    pub provider: Option<ModelProvider>,
 
-    /// Interleaved reasoning field configuration (provider-specific).
-    pub interleaved: Option<Value>,
+    /// Interleaved reasoning configuration.
+    pub interleaved: Option<Interleaved>,
 
-    /// Experimental feature flags or mode overrides.
-    pub experimental: Option<Value>,
+    /// Experimental feature modes and their configuration.
+    pub experimental: Option<Experimental>,
 }
 
 /// Input and output modalities for a model.
@@ -98,8 +101,27 @@ pub struct Cost {
     /// Audio output cost.
     pub output_audio: Option<f64>,
 
-    /// Input cost for prompts exceeding 200k tokens (provider-specific tier).
-    pub context_over_200k: Option<Value>,
+    /// Tiered pricing for prompts exceeding 200k tokens.
+    pub context_over_200k: Option<OverrideCost>,
+}
+
+/// Partial cost override used in tiered pricing and experimental modes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OverrideCost {
+    /// Input token cost.
+    pub input: Option<f64>,
+
+    /// Output token cost.
+    pub output: Option<f64>,
+
+    /// Reasoning token cost.
+    pub reasoning: Option<f64>,
+
+    /// Cache read cost.
+    pub cache_read: Option<f64>,
+
+    /// Cache write cost.
+    pub cache_write: Option<f64>,
 }
 
 /// Token limit information for a model.
@@ -113,4 +135,63 @@ pub struct Limit {
 
     /// Maximum input tokens (when distinct from context).
     pub input: Option<u64>,
+}
+
+/// Provider-specific overrides for a model entry.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModelProvider {
+    /// Alternative API endpoint URL.
+    pub api: Option<String>,
+
+    /// Alternative NPM package for the provider SDK.
+    pub npm: Option<String>,
+
+    /// Request shape override (e.g. `"completions"`).
+    pub shape: Option<String>,
+}
+
+/// Interleaved reasoning configuration.
+///
+/// Either a simple boolean (`true`) or a configuration object specifying
+/// which response field carries reasoning content.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Interleaved {
+    /// Interleaved reasoning is enabled with default configuration.
+    Enabled(bool),
+
+    /// Interleaved reasoning with an explicit field name.
+    Config {
+        /// The response field containing reasoning content
+        /// (e.g. `"reasoning_content"`, `"reasoning_details"`).
+        field: String,
+    },
+}
+
+/// Experimental feature modes for a model.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Experimental {
+    /// Named experimental modes (e.g. `"fast"`), each with its own cost
+    /// and provider configuration.
+    pub modes: HashMap<String, ExperimentalMode>,
+}
+
+/// Configuration for a single experimental mode.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExperimentalMode {
+    /// Cost overrides when using this mode.
+    pub cost: Option<OverrideCost>,
+
+    /// Provider-specific request overrides for this mode.
+    pub provider: Option<ExperimentalModeProvider>,
+}
+
+/// Provider-specific request overrides for an experimental mode.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExperimentalModeProvider {
+    /// Additional request body fields.
+    pub body: Option<HashMap<String, Value>>,
+
+    /// Additional request headers.
+    pub headers: Option<HashMap<String, String>>,
 }
