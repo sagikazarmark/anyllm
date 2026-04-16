@@ -67,7 +67,22 @@ pub enum ChatCapability {
     /// Supports requesting multiple tool calls in a single assistant turn.
     ParallelToolCalls,
     /// Supports incremental response delivery through [`ChatProvider::chat_stream`].
+    ///
+    /// This covers both native provider streaming and simulated streaming via
+    /// [`crate::SingleResponseStream`]. Query [`NativeStreaming`](Self::NativeStreaming)
+    /// to distinguish between the two modes.
     Streaming,
+    /// Provider delivers genuinely incremental streaming from the upstream API.
+    ///
+    /// `Supported` means [`ChatProvider::chat_stream`] returns a stream backed by
+    /// real incremental delivery (e.g. SSE). `Unsupported` means the provider
+    /// simulates streaming by replaying a fully materialized response through
+    /// [`crate::SingleResponseStream`]. `Unknown` means the provider does not
+    /// report this distinction.
+    ///
+    /// A provider that reports `NativeStreaming: Supported` implicitly satisfies
+    /// [`Streaming`](Self::Streaming) as well.
+    NativeStreaming,
     /// Supports image parts in user messages.
     ImageInput,
     /// Supports per-image detail hints on user image parts.
@@ -662,6 +677,16 @@ mod tests {
             Err(other) => panic!("expected timeout error, got {other:?}"),
             Ok(_) => panic!("expected chat_stream to return an error"),
         }
+    }
+
+    #[test]
+    fn trait_default_returns_unknown_for_native_streaming() {
+        let model = DefaultOnlyProvider::new(ChatResponseBuilder::new().text("test").build());
+
+        assert_eq!(
+            model.chat_capability("demo", ChatCapability::NativeStreaming),
+            CapabilitySupport::Unknown
+        );
     }
 
     #[test]
