@@ -20,7 +20,7 @@ pub struct Provider {
     pub npm: String,
 
     /// Base API endpoint URL.
-    pub api: String,
+    pub api: Option<String>,
 
     /// Documentation URL.
     pub doc: String,

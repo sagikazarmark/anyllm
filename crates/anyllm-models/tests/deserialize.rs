@@ -27,7 +27,7 @@ fn provider_fields() {
     assert_eq!(provider.name, "Test Provider Full");
     assert_eq!(provider.env, vec!["TEST_API_KEY"]);
     assert_eq!(provider.npm, "@test/sdk");
-    assert_eq!(provider.api, "https://api.test.example/v1");
+    assert_eq!(provider.api.as_deref(), Some("https://api.test.example/v1"));
     assert_eq!(provider.doc, "https://docs.test.example");
     assert_eq!(provider.models.len(), 2);
 }
@@ -44,7 +44,7 @@ fn model_with_all_optional_fields() {
     assert!(model.attachment);
     assert!(model.reasoning);
     assert!(model.tool_call);
-    assert!(model.temperature);
+    assert_eq!(model.temperature, Some(true));
     assert_eq!(model.structured_output, Some(true));
     assert_eq!(model.knowledge.as_deref(), Some("2025-01"));
     assert_eq!(model.release_date.as_deref(), Some("2025-03-15"));
@@ -56,13 +56,14 @@ fn model_with_all_optional_fields() {
     assert_eq!(model.modalities.output, vec!["text", "audio"]);
 
     // Costs
-    assert_eq!(model.cost.input, 2.5);
-    assert_eq!(model.cost.output, 10.0);
-    assert_eq!(model.cost.reasoning, Some(15.0));
-    assert_eq!(model.cost.cache_read, Some(1.25));
-    assert_eq!(model.cost.cache_write, Some(3.75));
-    assert_eq!(model.cost.input_audio, Some(40.0));
-    assert_eq!(model.cost.output_audio, Some(80.0));
+    let cost = model.cost.as_ref().expect("model-complete should have cost");
+    assert_eq!(cost.input, 2.5);
+    assert_eq!(cost.output, 10.0);
+    assert_eq!(cost.reasoning, Some(15.0));
+    assert_eq!(cost.cache_read, Some(1.25));
+    assert_eq!(cost.cache_write, Some(3.75));
+    assert_eq!(cost.input_audio, Some(40.0));
+    assert_eq!(cost.output_audio, Some(80.0));
 
     // Limits
     assert_eq!(model.limit.context, 200000);
@@ -88,11 +89,12 @@ fn model_with_missing_optional_fields() {
     assert!(model.open_weights);
 
     // Cost optional fields absent
-    assert_eq!(model.cost.reasoning, None);
-    assert_eq!(model.cost.cache_read, None);
-    assert_eq!(model.cost.cache_write, None);
-    assert_eq!(model.cost.input_audio, None);
-    assert_eq!(model.cost.output_audio, None);
+    let cost = model.cost.as_ref().expect("model-sparse should have cost");
+    assert_eq!(cost.reasoning, None);
+    assert_eq!(cost.cache_read, None);
+    assert_eq!(cost.cache_write, None);
+    assert_eq!(cost.input_audio, None);
+    assert_eq!(cost.output_audio, None);
 
     // Limit optional field absent
     assert_eq!(model.limit.input, None);

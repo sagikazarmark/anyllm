@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// A model entry from the `models.dev` registry.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -22,7 +23,7 @@ pub struct Model {
     pub tool_call: bool,
 
     /// Whether the model supports temperature configuration.
-    pub temperature: bool,
+    pub temperature: Option<bool>,
 
     /// Whether the model supports structured output.
     pub structured_output: Option<bool>,
@@ -43,10 +44,22 @@ pub struct Model {
     pub open_weights: bool,
 
     /// Pricing information.
-    pub cost: Cost,
+    pub cost: Option<Cost>,
 
     /// Token limit information.
     pub limit: Limit,
+
+    /// Model lifecycle status (e.g. `"beta"`, `"deprecated"`).
+    pub status: Option<String>,
+
+    /// Provider-specific override hints (e.g. npm package routing).
+    pub provider: Option<Value>,
+
+    /// Interleaved reasoning field configuration (provider-specific).
+    pub interleaved: Option<Value>,
+
+    /// Experimental feature flags or mode overrides.
+    pub experimental: Option<Value>,
 }
 
 /// Input and output modalities for a model.
@@ -84,6 +97,9 @@ pub struct Cost {
 
     /// Audio output cost.
     pub output_audio: Option<f64>,
+
+    /// Input cost for prompts exceeding 200k tokens (provider-specific tier).
+    pub context_over_200k: Option<Value>,
 }
 
 /// Token limit information for a model.
