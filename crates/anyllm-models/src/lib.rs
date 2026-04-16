@@ -40,6 +40,12 @@ mod fetch;
 #[cfg(feature = "http")]
 pub use fetch::{fetch, FetchOptions, FetchResult};
 
+#[cfg(feature = "resolver")]
+mod resolver;
+
+#[cfg(feature = "resolver")]
+pub use resolver::ModelsDevResolver;
+
 /// The top-level registry: a map from provider id to [`Provider`].
 pub type Registry = HashMap<String, Provider>;
 
