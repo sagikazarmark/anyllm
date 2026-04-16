@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-
 use reqwest::header::{HeaderMap, HeaderValue, IF_MODIFIED_SINCE, IF_NONE_MATCH};
 
-use crate::Provider;
+use crate::Registry;
 
 /// Options for fetching the registry, including conditional-request validators.
 #[derive(Debug, Clone, Default)]
@@ -20,7 +18,7 @@ pub enum FetchResult {
     /// The registry was fetched and deserialized successfully.
     Modified {
         /// The deserialized registry.
-        registry: HashMap<String, Provider>,
+        registry: Registry,
 
         /// ETag from the response, if present.
         etag: Option<String>,
@@ -71,7 +69,7 @@ pub async fn fetch(
         .and_then(|v| v.to_str().ok())
         .map(String::from);
 
-    let registry: HashMap<String, Provider> = response.json().await?;
+    let registry: Registry = response.json().await?;
 
     Ok(FetchResult::Modified {
         registry,
