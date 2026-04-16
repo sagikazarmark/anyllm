@@ -15,7 +15,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 [dev-dependencies]
-reqwest = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 
 [features]
@@ -25,6 +24,10 @@ http = ["dep:reqwest", "reqwest/default-tls"]
 [dependencies.reqwest]
 workspace = true
 optional = true
+
+[[test]]
+name = "fetch"
+required-features = ["http"]
 
 [package.metadata.docs.rs]
 all-features = true
