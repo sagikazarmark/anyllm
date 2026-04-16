@@ -107,6 +107,7 @@ impl Provider {
         match capability {
             ChatCapability::ToolCalls
             | ChatCapability::Streaming
+            | ChatCapability::NativeStreaming
             | ChatCapability::ImageInput
             | ChatCapability::ImageOutput
             | ChatCapability::StructuredOutput
@@ -354,6 +355,15 @@ mod tests {
         );
         assert_eq!(
             provider.chat_capability("gemini-2.5-flash", ChatCapability::ReasoningOutput),
+            CapabilitySupport::Supported
+        );
+    }
+
+    #[test]
+    fn builtin_gemini_capabilities_report_native_streaming() {
+        let provider = Provider::new("test-key").unwrap();
+        assert_eq!(
+            provider.chat_capability("gemini-2.0-flash", ChatCapability::NativeStreaming),
             CapabilitySupport::Supported
         );
     }
