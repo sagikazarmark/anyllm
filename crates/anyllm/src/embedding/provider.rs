@@ -16,6 +16,58 @@ pub enum EmbeddingCapability {
     OutputDimensions,
 }
 
+/// Optional resolver used to customize a provider's embedding capability answers.
+///
+/// Return `None` to defer to the provider's built-in answer. Return
+/// `Some(...)` to override it, including `Some(CapabilitySupport::Unknown)`.
+pub trait EmbeddingCapabilityResolver: Send + Sync + 'static {
+    /// Return an override for the queried capability, or `None` to defer to
+    /// the provider's built-in capability logic.
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> Option<CapabilitySupport>;
+}
+
+impl<F> EmbeddingCapabilityResolver for F
+where
+    F: for<'a> Fn(&'a str, EmbeddingCapability) -> Option<CapabilitySupport> + Send + Sync + 'static,
+{
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> Option<CapabilitySupport> {
+        self(model, capability)
+    }
+}
+
+impl EmbeddingCapabilityResolver for Arc<dyn EmbeddingCapabilityResolver> {
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> Option<CapabilitySupport> {
+        (**self).embedding_capability(model, capability)
+    }
+}
+
+impl<T: EmbeddingCapabilityResolver> EmbeddingCapabilityResolver for Vec<T> {
+    fn embedding_capability(
+        &self,
+        model: &str,
+        capability: EmbeddingCapability,
+    ) -> Option<CapabilitySupport> {
+        for resolver in self {
+            if let Some(support) = resolver.embedding_capability(model, capability) {
+                return Some(support);
+            }
+        }
+        None
+    }
+}
+
 /// Core trait for providers that expose a text embedding API.
 ///
 /// Implementations are batch-oriented. Callers that have a single input
@@ -387,6 +439,80 @@ mod dyn_tests {
         let debug = format!("{provider:?}");
         assert!(debug.contains("DynEmbeddingProvider"));
         assert!(debug.contains("debug-embed"));
+    }
+}
+
+#[cfg(test)]
+mod resolver_tests {
+    use super::*;
+    use crate::CapabilitySupport;
+    use std::sync::Arc;
+
+    struct FixedEmbeddingResolver(Option<CapabilitySupport>);
+
+    impl EmbeddingCapabilityResolver for FixedEmbeddingResolver {
+        fn embedding_capability(
+            &self,
+            _model: &str,
+            _capability: EmbeddingCapability,
+        ) -> Option<CapabilitySupport> {
+            self.0
+        }
+    }
+
+    #[test]
+    fn closure_resolver_works() {
+        let resolver = |_model: &str, _cap: EmbeddingCapability| -> Option<CapabilitySupport> {
+            Some(CapabilitySupport::Supported)
+        };
+        assert_eq!(
+            resolver.embedding_capability("m", EmbeddingCapability::BatchInput),
+            Some(CapabilitySupport::Supported),
+        );
+    }
+
+    #[test]
+    fn arc_delegates_to_inner() {
+        let resolver: Arc<dyn EmbeddingCapabilityResolver> =
+            Arc::new(FixedEmbeddingResolver(Some(CapabilitySupport::Unsupported)));
+        assert_eq!(
+            resolver.embedding_capability("m", EmbeddingCapability::BatchInput),
+            Some(CapabilitySupport::Unsupported),
+        );
+    }
+
+    #[test]
+    fn vec_returns_first_some() {
+        let resolvers: Vec<Arc<dyn EmbeddingCapabilityResolver>> = vec![
+            Arc::new(FixedEmbeddingResolver(None)),
+            Arc::new(FixedEmbeddingResolver(Some(CapabilitySupport::Supported))),
+            Arc::new(FixedEmbeddingResolver(Some(CapabilitySupport::Unsupported))),
+        ];
+        assert_eq!(
+            resolvers.embedding_capability("m", EmbeddingCapability::BatchInput),
+            Some(CapabilitySupport::Supported),
+        );
+    }
+
+    #[test]
+    fn vec_returns_none_when_all_defer() {
+        let resolvers: Vec<Arc<dyn EmbeddingCapabilityResolver>> = vec![
+            Arc::new(FixedEmbeddingResolver(None)),
+            Arc::new(FixedEmbeddingResolver(None)),
+        ];
+        assert_eq!(
+            resolvers.embedding_capability("m", EmbeddingCapability::BatchInput),
+            None,
+        );
+    }
+
+    #[test]
+    fn empty_vec_returns_none() {
+        let resolvers: Vec<Arc<dyn EmbeddingCapabilityResolver>> = vec![];
+        assert_eq!(
+            resolvers.embedding_capability("m", EmbeddingCapability::BatchInput),
+            None,
+        );
     }
 }
 

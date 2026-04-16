@@ -84,8 +84,8 @@ pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_na
 #[cfg(any(test, feature = "mock"))]
 pub use embedding::MockEmbeddingProvider;
 pub use embedding::{
-    DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
-    EmbeddingRequest, EmbeddingResponse,
+    DynEmbeddingProvider, EmbeddingCapability, EmbeddingCapabilityResolver, EmbeddingProvider,
+    EmbeddingProviderExt, EmbeddingRequest, EmbeddingResponse,
 };
 pub use error::{Error, ErrorLog, Result, SerializationError};
 pub use identity::ProviderIdentity;
@@ -106,7 +106,8 @@ pub mod prelude {
     pub use crate::{
         CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
         ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
-        DynChatProvider, DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider,
+        DynChatProvider, DynEmbeddingProvider, EmbeddingCapability, EmbeddingCapabilityResolver,
+        EmbeddingProvider,
         EmbeddingProviderExt, EmbeddingRequest, EmbeddingResponse, Error, ErrorLog, ExtraMap,
         FallbackChatProvider, FinishReason, ImageSource, Message, OwnedToolCall, ProviderIdentity,
         ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,

@@ -18,7 +18,8 @@ mod response;
 mod mock;
 
 pub use provider::{
-    DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
+    DynEmbeddingProvider, EmbeddingCapability, EmbeddingCapabilityResolver, EmbeddingProvider,
+    EmbeddingProviderExt,
 };
 pub use request::EmbeddingRequest;
 pub use response::EmbeddingResponse;
