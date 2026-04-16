@@ -14,6 +14,20 @@ pub use anyllm_openai_compat::OpenAIReasoningEffort;
 use anyllm_openai_compat::TransportConfig;
 pub use options::{ChatRequestOptions, ChatResponseMetadata, EmbeddingRequestOptions};
 
+#[cfg(feature = "models-dev")]
+pub use anyllm_models::ModelsDevResolver;
+
+/// Construct a [`ModelsDevResolver`] from the embedded `models.dev` OpenAI
+/// snapshot.
+///
+/// The snapshot is checked into this crate and compiled in via
+/// `include_str!()`. It provides advisory capability answers for OpenAI
+/// models.
+#[cfg(feature = "models-dev")]
+pub fn models_dev_chat_capabilities() -> serde_json::Result<ModelsDevResolver> {
+    ModelsDevResolver::from_provider_json(include_str!("../models-dev.json"))
+}
+
 #[cfg(feature = "http-tracing")]
 type HttpClient = reqwest_middleware::ClientWithMiddleware;
 #[cfg(not(feature = "http-tracing"))]
@@ -589,6 +603,30 @@ mod tests {
             Some(DEFAULT_HTTP_TIMEOUT)
         );
         assert_eq!(request_timeout(true, Some(DEFAULT_HTTP_TIMEOUT)), None);
+    }
+
+    #[test]
+    #[cfg(feature = "models-dev")]
+    fn models_dev_snapshot_deserializes_successfully() {
+        let resolver = models_dev_chat_capabilities().unwrap();
+        assert_ne!(
+            resolver.chat_capability("gpt-4o", ChatCapability::ToolCalls),
+            None,
+            "gpt-4o should be present in the snapshot",
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "models-dev")]
+    fn models_dev_resolver_integrates_with_provider() {
+        let provider = Provider::new("test-key")
+            .unwrap()
+            .with_chat_capabilities(models_dev_chat_capabilities().unwrap());
+
+        assert_ne!(
+            provider.chat_capability("gpt-4o", ChatCapability::ToolCalls),
+            CapabilitySupport::Unknown,
+        );
     }
 
     #[test]
