@@ -27,14 +27,6 @@ impl ModelsDevResolver {
     }
 }
 
-fn support_from_bool(b: bool) -> CapabilitySupport {
-    if b {
-        CapabilitySupport::Supported
-    } else {
-        CapabilitySupport::Unsupported
-    }
-}
-
 impl ChatCapabilityResolver for ModelsDevResolver {
     fn chat_capability(
         &self,
@@ -44,14 +36,14 @@ impl ChatCapabilityResolver for ModelsDevResolver {
         let model = self.models.get(model)?;
 
         match capability {
-            ChatCapability::ToolCalls => Some(support_from_bool(model.tool_call)),
-            ChatCapability::StructuredOutput => model.structured_output.map(support_from_bool),
-            ChatCapability::ImageInput => Some(support_from_bool(
-                model.modalities.input.iter().any(|m| m == "image"),
-            )),
-            ChatCapability::ImageOutput => Some(support_from_bool(
-                model.modalities.output.iter().any(|m| m == "image"),
-            )),
+            ChatCapability::ToolCalls => Some(model.tool_call.into()),
+            ChatCapability::StructuredOutput => model.structured_output.map(Into::into),
+            ChatCapability::ImageInput => {
+                Some(model.modalities.input.iter().any(|m| m == "image").into())
+            }
+            ChatCapability::ImageOutput => {
+                Some(model.modalities.output.iter().any(|m| m == "image").into())
+            }
             _ => None,
         }
     }

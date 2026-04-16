@@ -13,3 +13,13 @@ pub enum CapabilitySupport {
     #[default]
     Unknown,
 }
+
+impl From<bool> for CapabilitySupport {
+    fn from(supported: bool) -> Self {
+        if supported {
+            Self::Supported
+        } else {
+            Self::Unsupported
+        }
+    }
+}
