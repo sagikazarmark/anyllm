@@ -26,6 +26,7 @@ impl ChatProvider for StaticProvider {
     fn chat_capability(&self, _model: &str, capability: ChatCapability) -> CapabilitySupport {
         match capability {
             ChatCapability::Streaming => CapabilitySupport::Supported,
+            ChatCapability::NativeStreaming => CapabilitySupport::Unsupported,
             _ => CapabilitySupport::Unknown,
         }
     }
@@ -43,6 +44,10 @@ async fn main() -> anyllm::Result<()> {
     println!(
         "streaming support: {:?}",
         provider.chat_capability(&request.model, ChatCapability::Streaming)
+    );
+    println!(
+        "native streaming: {:?}",
+        provider.chat_capability(&request.model, ChatCapability::NativeStreaming)
     );
 
     let streamed = provider
