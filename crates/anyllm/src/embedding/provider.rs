@@ -20,6 +20,11 @@ pub enum EmbeddingCapability {
 ///
 /// Return `None` to defer to the provider's built-in answer. Return
 /// `Some(...)` to override it, including `Some(CapabilitySupport::Unknown)`.
+///
+/// Composition is supported through [`Arc<dyn EmbeddingCapabilityResolver>`]
+/// and [`Vec<T>`] impls. `Box<T>` is intentionally omitted because `std`
+/// implements `Fn` for `Box<F>`, which creates a coherence conflict with the
+/// closure blanket impl.
 pub trait EmbeddingCapabilityResolver: Send + Sync + 'static {
     /// Return an override for the queried capability, or `None` to defer to
     /// the provider's built-in capability logic.

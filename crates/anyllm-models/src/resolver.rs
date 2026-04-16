@@ -9,6 +9,7 @@ use crate::Model;
 /// Answers chat capability queries from a snapshot of per-model metadata.
 /// Returns `None` (defer) for models absent from the snapshot or for
 /// capabilities without a clear mapping in the `models.dev` schema.
+#[derive(Debug, Clone)]
 pub struct ModelsDevResolver {
     models: HashMap<String, Model>,
 }
