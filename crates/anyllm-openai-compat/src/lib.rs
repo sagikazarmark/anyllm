@@ -2,7 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyllm::{
-    CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, Error, Result,
+    CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability,
+    EmbeddingCapabilityResolver, Error, Result,
 };
 
 mod chat;
@@ -47,6 +48,7 @@ pub(crate) struct Inner {
     pub(crate) chat_capabilities: HashMap<ChatCapability, CapabilitySupport>,
     pub(crate) chat_capability_resolver: Option<Arc<dyn ChatCapabilityResolver>>,
     pub(crate) embedding_capabilities: HashMap<EmbeddingCapability, CapabilitySupport>,
+    pub(crate) embedding_capability_resolver: Option<Arc<dyn EmbeddingCapabilityResolver>>,
     pub(crate) provider_name: &'static str,
 }
 
@@ -111,6 +113,23 @@ impl Provider {
                 chat_capabilities: self.inner.chat_capabilities.clone(),
                 chat_capability_resolver: Some(Arc::new(resolver)),
                 embedding_capabilities: self.inner.embedding_capabilities.clone(),
+                embedding_capability_resolver: self.inner.embedding_capability_resolver.clone(),
+                provider_name: self.inner.provider_name,
+            }),
+        }
+    }
+
+    /// Install a resolver consulted before the provider's configured embedding capability logic.
+    #[must_use]
+    pub fn with_embedding_capabilities(self, resolver: impl EmbeddingCapabilityResolver) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                client: self.inner.client.clone(),
+                transport: self.inner.transport.clone(),
+                chat_capabilities: self.inner.chat_capabilities.clone(),
+                chat_capability_resolver: self.inner.chat_capability_resolver.clone(),
+                embedding_capabilities: self.inner.embedding_capabilities.clone(),
+                embedding_capability_resolver: Some(Arc::new(resolver)),
                 provider_name: self.inner.provider_name,
             }),
         }
@@ -123,6 +142,18 @@ impl Provider {
     ) -> CapabilitySupport {
         self.inner
             .chat_capabilities
+            .get(&capability)
+            .copied()
+            .unwrap_or(CapabilitySupport::Unknown)
+    }
+
+    pub(crate) fn builtin_embedding_capability(
+        &self,
+        _model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        self.inner
+            .embedding_capabilities
             .get(&capability)
             .copied()
             .unwrap_or(CapabilitySupport::Unknown)
@@ -298,6 +329,7 @@ impl ProviderBuilder {
                 chat_capabilities: self.chat_capabilities,
                 chat_capability_resolver: None,
                 embedding_capabilities: self.embedding_capabilities,
+                embedding_capability_resolver: None,
                 provider_name: self.provider_name.unwrap_or("openai_compat"),
             }),
         })
@@ -652,6 +684,39 @@ mod tests {
         assert_eq!(
             provider.embedding_capability("m", EmbeddingCapability::OutputDimensions),
             CapabilitySupport::Supported
+        );
+    }
+
+    #[test]
+    fn embedding_capability_resolver_overrides_configured_capability() {
+        use anyllm::{EmbeddingCapability, EmbeddingProvider};
+
+        let provider = Provider::builder()
+            .base_url("https://example.com/v1")
+            .bearer_token("token")
+            .embedding_capability(
+                EmbeddingCapability::OutputDimensions,
+                CapabilitySupport::Supported,
+            )
+            .build()
+            .unwrap()
+            .with_embedding_capabilities(|_model: &str, capability| {
+                if capability == EmbeddingCapability::OutputDimensions {
+                    Some(CapabilitySupport::Unsupported)
+                } else {
+                    None
+                }
+            });
+
+        // Resolver overrides builder-configured capability
+        assert_eq!(
+            provider.embedding_capability("m", EmbeddingCapability::OutputDimensions),
+            CapabilitySupport::Unsupported,
+        );
+        // Unconfigured capability falls through to Unknown
+        assert_eq!(
+            provider.embedding_capability("m", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Unknown,
         );
     }
 }

@@ -172,14 +172,19 @@ impl EmbeddingProvider for Provider {
 
     fn embedding_capability(
         &self,
-        _model: &str,
+        model: &str,
         capability: EmbeddingCapability,
     ) -> CapabilitySupport {
-        self.inner
-            .embedding_capabilities
-            .get(&capability)
-            .copied()
-            .unwrap_or(CapabilitySupport::Unknown)
+        if let Some(support) = self
+            .inner
+            .embedding_capability_resolver
+            .as_ref()
+            .and_then(|resolver| resolver.embedding_capability(model, capability))
+        {
+            support
+        } else {
+            self.builtin_embedding_capability(model, capability)
+        }
     }
 }
 
