@@ -125,6 +125,41 @@ where
     }
 }
 
+impl ChatCapabilityResolver for Box<dyn ChatCapabilityResolver> {
+    fn chat_capability(
+        &self,
+        model: &str,
+        capability: ChatCapability,
+    ) -> Option<CapabilitySupport> {
+        (**self).chat_capability(model, capability)
+    }
+}
+
+impl ChatCapabilityResolver for Arc<dyn ChatCapabilityResolver> {
+    fn chat_capability(
+        &self,
+        model: &str,
+        capability: ChatCapability,
+    ) -> Option<CapabilitySupport> {
+        (**self).chat_capability(model, capability)
+    }
+}
+
+impl<T: ChatCapabilityResolver> ChatCapabilityResolver for Vec<T> {
+    fn chat_capability(
+        &self,
+        model: &str,
+        capability: ChatCapability,
+    ) -> Option<CapabilitySupport> {
+        for resolver in self {
+            if let Some(support) = resolver.chat_capability(model, capability) {
+                return Some(support);
+            }
+        }
+        None
+    }
+}
+
 impl<T> ChatProvider for &T
 where
     T: ChatProvider + ?Sized,
@@ -718,6 +753,79 @@ mod tests {
         assert_eq!(
             resolver.chat_capability("demo", ChatCapability::ToolCalls),
             None
+        );
+    }
+}
+
+#[cfg(test)]
+mod resolver_tests {
+    use super::*;
+    use crate::CapabilitySupport;
+    use std::sync::Arc;
+
+    struct FixedResolver(Option<CapabilitySupport>);
+
+    impl ChatCapabilityResolver for FixedResolver {
+        fn chat_capability(
+            &self,
+            _model: &str,
+            _capability: ChatCapability,
+        ) -> Option<CapabilitySupport> {
+            self.0
+        }
+    }
+
+    #[test]
+    fn box_delegates_to_inner() {
+        let resolver: Box<dyn ChatCapabilityResolver> =
+            Box::new(FixedResolver(Some(CapabilitySupport::Supported)));
+        assert_eq!(
+            resolver.chat_capability("m", ChatCapability::ToolCalls),
+            Some(CapabilitySupport::Supported),
+        );
+    }
+
+    #[test]
+    fn arc_delegates_to_inner() {
+        let resolver: Arc<dyn ChatCapabilityResolver> =
+            Arc::new(FixedResolver(Some(CapabilitySupport::Unsupported)));
+        assert_eq!(
+            resolver.chat_capability("m", ChatCapability::ToolCalls),
+            Some(CapabilitySupport::Unsupported),
+        );
+    }
+
+    #[test]
+    fn vec_returns_first_some() {
+        let resolvers: Vec<Box<dyn ChatCapabilityResolver>> = vec![
+            Box::new(FixedResolver(None)),
+            Box::new(FixedResolver(Some(CapabilitySupport::Supported))),
+            Box::new(FixedResolver(Some(CapabilitySupport::Unsupported))),
+        ];
+        assert_eq!(
+            resolvers.chat_capability("m", ChatCapability::ToolCalls),
+            Some(CapabilitySupport::Supported),
+        );
+    }
+
+    #[test]
+    fn vec_returns_none_when_all_defer() {
+        let resolvers: Vec<Box<dyn ChatCapabilityResolver>> = vec![
+            Box::new(FixedResolver(None)),
+            Box::new(FixedResolver(None)),
+        ];
+        assert_eq!(
+            resolvers.chat_capability("m", ChatCapability::ToolCalls),
+            None,
+        );
+    }
+
+    #[test]
+    fn empty_vec_returns_none() {
+        let resolvers: Vec<Box<dyn ChatCapabilityResolver>> = vec![];
+        assert_eq!(
+            resolvers.chat_capability("m", ChatCapability::ToolCalls),
+            None,
         );
     }
 }
