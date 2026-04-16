@@ -623,7 +623,10 @@ impl MockStreamingProvider {
             })),
             chat_capabilities: HashMap::from([
                 (ChatCapability::Streaming, CapabilitySupport::Supported),
-                (ChatCapability::NativeStreaming, CapabilitySupport::Supported),
+                (
+                    ChatCapability::NativeStreaming,
+                    CapabilitySupport::Supported,
+                ),
             ]),
             provider_name: "mock_stream",
         }
@@ -954,7 +957,10 @@ impl MockStreamingProviderBuilder {
             streams: Vec::new(),
             chat_capabilities: HashMap::from([
                 (ChatCapability::Streaming, CapabilitySupport::Supported),
-                (ChatCapability::NativeStreaming, CapabilitySupport::Supported),
+                (
+                    ChatCapability::NativeStreaming,
+                    CapabilitySupport::Supported,
+                ),
             ]),
             provider_name: "mock_stream",
         }
@@ -1532,7 +1538,10 @@ mod tests {
     #[test]
     fn mock_streaming_provider_defaults_to_native_streaming_supported() {
         let provider = MockStreamingProvider::new(vec![vec![
-            MockStreamEvent::from(StreamEvent::ResponseStart { id: None, model: None }),
+            MockStreamEvent::from(StreamEvent::ResponseStart {
+                id: None,
+                model: None,
+            }),
             MockStreamEvent::from(StreamEvent::ResponseStop),
         ]]);
 

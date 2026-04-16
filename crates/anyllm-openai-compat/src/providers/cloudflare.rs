@@ -87,7 +87,10 @@ impl Cloudflare {
         [
             (ChatCapability::ToolCalls, CapabilitySupport::Supported),
             (ChatCapability::Streaming, CapabilitySupport::Supported),
-            (ChatCapability::NativeStreaming, CapabilitySupport::Supported),
+            (
+                ChatCapability::NativeStreaming,
+                CapabilitySupport::Supported,
+            ),
             (
                 ChatCapability::StructuredOutput,
                 CapabilitySupport::Supported,
@@ -153,7 +156,10 @@ mod tests {
         use anyllm::{ChatCapability, ChatProvider};
         let provider = Cloudflare::new("account", "token").unwrap();
         assert_eq!(
-            provider.chat_capability("@cf/meta/llama-3.1-8b-instruct", ChatCapability::NativeStreaming),
+            provider.chat_capability(
+                "@cf/meta/llama-3.1-8b-instruct",
+                ChatCapability::NativeStreaming
+            ),
             anyllm::CapabilitySupport::Supported,
         );
     }
