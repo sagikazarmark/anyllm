@@ -76,7 +76,7 @@ mod wire;
 
 use std::sync::Arc;
 
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver};
+use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, EmbeddingCapabilityResolver};
 
 /// Cloudflare Workers AI provider implementing `anyllm::ChatProvider`.
 ///
@@ -102,6 +102,7 @@ use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver};
 pub struct Provider {
     pub(crate) ai: worker::Ai,
     pub(crate) chat_capability_resolver: Option<Arc<dyn ChatCapabilityResolver>>,
+    pub(crate) embedding_capability_resolver: Option<Arc<dyn EmbeddingCapabilityResolver>>,
 }
 
 impl Provider {
@@ -110,6 +111,7 @@ impl Provider {
         Self {
             ai,
             chat_capability_resolver: None,
+            embedding_capability_resolver: None,
         }
     }
 
@@ -139,6 +141,25 @@ impl Provider {
     #[must_use]
     pub fn with_chat_capabilities(mut self, resolver: impl ChatCapabilityResolver) -> Self {
         self.chat_capability_resolver = Some(Arc::new(resolver));
+        self
+    }
+
+    fn builtin_embedding_capability(
+        &self,
+        _model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        match capability {
+            EmbeddingCapability::BatchInput => CapabilitySupport::Supported,
+            EmbeddingCapability::OutputDimensions => CapabilitySupport::Unsupported,
+            _ => CapabilitySupport::Unknown,
+        }
+    }
+
+    /// Install a resolver consulted before the provider's built-in embedding capability logic.
+    #[must_use]
+    pub fn with_embedding_capabilities(mut self, resolver: impl EmbeddingCapabilityResolver) -> Self {
+        self.embedding_capability_resolver = Some(Arc::new(resolver));
         self
     }
 }

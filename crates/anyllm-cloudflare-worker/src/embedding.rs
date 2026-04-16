@@ -70,13 +70,17 @@ impl EmbeddingProvider for Provider {
 
     fn embedding_capability(
         &self,
-        _model: &str,
+        model: &str,
         capability: EmbeddingCapability,
     ) -> CapabilitySupport {
-        match capability {
-            EmbeddingCapability::BatchInput => CapabilitySupport::Supported,
-            EmbeddingCapability::OutputDimensions => CapabilitySupport::Unsupported,
-            _ => CapabilitySupport::Unknown,
+        if let Some(support) = self
+            .embedding_capability_resolver
+            .as_ref()
+            .and_then(|resolver| resolver.embedding_capability(model, capability))
+        {
+            support
+        } else {
+            self.builtin_embedding_capability(model, capability)
         }
     }
 }
