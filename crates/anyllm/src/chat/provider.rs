@@ -125,16 +125,6 @@ where
     }
 }
 
-impl ChatCapabilityResolver for Box<dyn ChatCapabilityResolver> {
-    fn chat_capability(
-        &self,
-        model: &str,
-        capability: ChatCapability,
-    ) -> Option<CapabilitySupport> {
-        (**self).chat_capability(model, capability)
-    }
-}
-
 impl ChatCapabilityResolver for Arc<dyn ChatCapabilityResolver> {
     fn chat_capability(
         &self,
@@ -776,16 +766,6 @@ mod resolver_tests {
     }
 
     #[test]
-    fn box_delegates_to_inner() {
-        let resolver: Box<dyn ChatCapabilityResolver> =
-            Box::new(FixedResolver(Some(CapabilitySupport::Supported)));
-        assert_eq!(
-            resolver.chat_capability("m", ChatCapability::ToolCalls),
-            Some(CapabilitySupport::Supported),
-        );
-    }
-
-    #[test]
     fn arc_delegates_to_inner() {
         let resolver: Arc<dyn ChatCapabilityResolver> =
             Arc::new(FixedResolver(Some(CapabilitySupport::Unsupported)));
@@ -797,10 +777,10 @@ mod resolver_tests {
 
     #[test]
     fn vec_returns_first_some() {
-        let resolvers: Vec<Box<dyn ChatCapabilityResolver>> = vec![
-            Box::new(FixedResolver(None)),
-            Box::new(FixedResolver(Some(CapabilitySupport::Supported))),
-            Box::new(FixedResolver(Some(CapabilitySupport::Unsupported))),
+        let resolvers: Vec<Arc<dyn ChatCapabilityResolver>> = vec![
+            Arc::new(FixedResolver(None)),
+            Arc::new(FixedResolver(Some(CapabilitySupport::Supported))),
+            Arc::new(FixedResolver(Some(CapabilitySupport::Unsupported))),
         ];
         assert_eq!(
             resolvers.chat_capability("m", ChatCapability::ToolCalls),
@@ -810,9 +790,9 @@ mod resolver_tests {
 
     #[test]
     fn vec_returns_none_when_all_defer() {
-        let resolvers: Vec<Box<dyn ChatCapabilityResolver>> = vec![
-            Box::new(FixedResolver(None)),
-            Box::new(FixedResolver(None)),
+        let resolvers: Vec<Arc<dyn ChatCapabilityResolver>> = vec![
+            Arc::new(FixedResolver(None)),
+            Arc::new(FixedResolver(None)),
         ];
         assert_eq!(
             resolvers.chat_capability("m", ChatCapability::ToolCalls),
@@ -822,7 +802,7 @@ mod resolver_tests {
 
     #[test]
     fn empty_vec_returns_none() {
-        let resolvers: Vec<Box<dyn ChatCapabilityResolver>> = vec![];
+        let resolvers: Vec<Arc<dyn ChatCapabilityResolver>> = vec![];
         assert_eq!(
             resolvers.chat_capability("m", ChatCapability::ToolCalls),
             None,
