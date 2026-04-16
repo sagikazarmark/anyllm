@@ -31,6 +31,12 @@ mod provider;
 pub use model::{Cost, Limit, Modalities, Model};
 pub use provider::Provider;
 
+#[cfg(feature = "http")]
+mod fetch;
+
+#[cfg(feature = "http")]
+pub use fetch::{fetch, FetchOptions, FetchResult};
+
 /// The top-level registry: a map from provider id to [`Provider`].
 pub type Registry = HashMap<String, Provider>;
 
