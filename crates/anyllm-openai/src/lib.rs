@@ -1,4 +1,4 @@
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
+use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, EmbeddingCapabilityResolver, Error, Result};
 use std::{sync::Arc, time::Duration};
 
 mod chat;
@@ -35,6 +35,7 @@ pub(crate) struct Inner {
     pub(crate) organization: Option<String>,
     pub(crate) project: Option<String>,
     pub(crate) chat_capability_resolver: Option<Arc<dyn ChatCapabilityResolver>>,
+    pub(crate) embedding_capability_resolver: Option<Arc<dyn EmbeddingCapabilityResolver>>,
 }
 
 const DEFAULT_BASE_URL: &str = "https://api.openai.com/v1";
@@ -139,6 +140,19 @@ impl Provider {
         }
     }
 
+    fn builtin_embedding_capability(
+        &self,
+        _model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        match capability {
+            EmbeddingCapability::BatchInput | EmbeddingCapability::OutputDimensions => {
+                CapabilitySupport::Supported
+            }
+            _ => CapabilitySupport::Unknown,
+        }
+    }
+
     fn builtin_chat_capability(
         &self,
         model: &str,
@@ -189,6 +203,7 @@ impl Provider {
                 organization: None,
                 project: None,
                 chat_capability_resolver: None,
+                embedding_capability_resolver: None,
             }),
         })
     }
@@ -217,6 +232,7 @@ impl Provider {
                 organization: optional_nonempty(organization),
                 project: optional_nonempty(project),
                 chat_capability_resolver: None,
+                embedding_capability_resolver: None,
             }),
         })
     }
@@ -233,6 +249,24 @@ impl Provider {
                 organization: self.inner.organization.clone(),
                 project: self.inner.project.clone(),
                 chat_capability_resolver: Some(Arc::new(resolver)),
+                embedding_capability_resolver: self.inner.embedding_capability_resolver.clone(),
+            }),
+        }
+    }
+
+    /// Install a resolver consulted before the provider's built-in embedding capability logic.
+    #[must_use]
+    pub fn with_embedding_capabilities(self, resolver: impl EmbeddingCapabilityResolver) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                client: self.inner.client.clone(),
+                request_timeout: self.inner.request_timeout,
+                api_key: self.inner.api_key.clone(),
+                base_url: self.inner.base_url.clone(),
+                organization: self.inner.organization.clone(),
+                project: self.inner.project.clone(),
+                chat_capability_resolver: self.inner.chat_capability_resolver.clone(),
+                embedding_capability_resolver: Some(Arc::new(resolver)),
             }),
         }
     }
@@ -311,6 +345,7 @@ impl ProviderBuilder {
                 organization: optional_nonempty(self.organization),
                 project: optional_nonempty(self.project),
                 chat_capability_resolver: None,
+                embedding_capability_resolver: None,
             }),
         })
     }
@@ -333,7 +368,7 @@ pub fn conformance_stream_from_sse_text(text: &str) -> anyllm::ChatStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyllm::{ChatCapability, ChatProvider};
+    use anyllm::{ChatCapability, ChatProvider, EmbeddingCapability, EmbeddingProvider};
     use std::sync::{LazyLock, Mutex};
 
     static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
@@ -554,5 +589,28 @@ mod tests {
             Some(DEFAULT_HTTP_TIMEOUT)
         );
         assert_eq!(request_timeout(true, Some(DEFAULT_HTTP_TIMEOUT)), None);
+    }
+
+    #[test]
+    fn embedding_capability_resolver_overrides_builtin_answer() {
+        let provider = Provider::new("test-key")
+            .unwrap()
+            .with_embedding_capabilities(|_model: &str, capability| {
+                if capability == EmbeddingCapability::OutputDimensions {
+                    Some(CapabilitySupport::Unsupported)
+                } else {
+                    None
+                }
+            });
+
+        assert_eq!(
+            provider.embedding_capability("text-embedding-3-small", EmbeddingCapability::OutputDimensions),
+            CapabilitySupport::Unsupported,
+        );
+        // BatchInput falls through to builtin
+        assert_eq!(
+            provider.embedding_capability("text-embedding-3-small", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Supported,
+        );
     }
 }
