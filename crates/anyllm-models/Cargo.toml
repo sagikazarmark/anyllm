@@ -1,0 +1,29 @@
+[package]
+name = "anyllm-models"
+description = "Typed Rust structs for the models.dev model registry"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros"] }
+
+[features]
+default = []
+http = ["dep:reqwest", "reqwest/default-tls"]
+
+[dependencies.reqwest]
+workspace = true
+optional = true
+
+[package.metadata.docs.rs]
+all-features = true

@@ -15,6 +15,7 @@ categories = ["artificial-intelligence"]
 [workspace.dependencies]
 anyllm = { version = "0.0.1", path = "crates/anyllm" }
 anyllm-conformance = { version = "0.0.1", path = "crates/anyllm-conformance" }
+anyllm-models = { version = "0.0.1", path = "crates/anyllm-models" }
 anyllm-openai-compat = { version = "0.0.1", path = "crates/anyllm-openai-compat", default-features = false }
 criterion = "0.8"
 eventsource-stream = "0.2"
