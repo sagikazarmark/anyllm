@@ -1,4 +1,4 @@
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
+use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, EmbeddingCapabilityResolver, Error, Result};
 use std::{sync::Arc, time::Duration};
 
 mod chat;
@@ -31,6 +31,7 @@ pub(crate) struct Inner {
     pub(crate) api_key: String,
     pub(crate) base_url: String,
     pub(crate) chat_capability_resolver: Option<Arc<dyn ChatCapabilityResolver>>,
+    pub(crate) embedding_capability_resolver: Option<Arc<dyn EmbeddingCapabilityResolver>>,
 }
 
 const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta";
@@ -123,6 +124,19 @@ impl Provider {
         }
     }
 
+    fn builtin_embedding_capability(
+        &self,
+        _model: &str,
+        capability: EmbeddingCapability,
+    ) -> CapabilitySupport {
+        match capability {
+            EmbeddingCapability::BatchInput | EmbeddingCapability::OutputDimensions => {
+                CapabilitySupport::Supported
+            }
+            _ => CapabilitySupport::Unknown,
+        }
+    }
+
     /// Create with just an API key. Uses default base URL.
     pub fn new(api_key: impl Into<String>) -> Result<Self> {
         Self::new_with_base_url(api_key, DEFAULT_BASE_URL)
@@ -143,6 +157,7 @@ impl Provider {
                 api_key,
                 base_url,
                 chat_capability_resolver: None,
+                embedding_capability_resolver: None,
             }),
         })
     }
@@ -157,6 +172,22 @@ impl Provider {
                 api_key: self.inner.api_key.clone(),
                 base_url: self.inner.base_url.clone(),
                 chat_capability_resolver: Some(Arc::new(resolver)),
+                embedding_capability_resolver: self.inner.embedding_capability_resolver.clone(),
+            }),
+        }
+    }
+
+    /// Install a resolver consulted before the provider's built-in embedding capability logic.
+    #[must_use]
+    pub fn with_embedding_capabilities(self, resolver: impl EmbeddingCapabilityResolver) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                client: self.inner.client.clone(),
+                request_timeout: self.inner.request_timeout,
+                api_key: self.inner.api_key.clone(),
+                base_url: self.inner.base_url.clone(),
+                chat_capability_resolver: self.inner.chat_capability_resolver.clone(),
+                embedding_capability_resolver: Some(Arc::new(resolver)),
             }),
         }
     }
@@ -235,6 +266,7 @@ impl ProviderBuilder {
                 api_key,
                 base_url: builder_base_url(self.base_url)?,
                 chat_capability_resolver: None,
+                embedding_capability_resolver: None,
             }),
         })
     }
@@ -462,5 +494,30 @@ mod tests {
             Some(DEFAULT_HTTP_TIMEOUT)
         );
         assert_eq!(request_timeout(true, Some(DEFAULT_HTTP_TIMEOUT)), None);
+    }
+
+    #[test]
+    fn embedding_capability_resolver_overrides_builtin_answer() {
+        use anyllm::{EmbeddingCapability, EmbeddingProvider};
+
+        let provider = Provider::new("test-key")
+            .unwrap()
+            .with_embedding_capabilities(|_model: &str, capability| {
+                if capability == EmbeddingCapability::BatchInput {
+                    Some(CapabilitySupport::Unsupported)
+                } else {
+                    None
+                }
+            });
+
+        assert_eq!(
+            provider.embedding_capability("text-embedding-004", EmbeddingCapability::BatchInput),
+            CapabilitySupport::Unsupported,
+        );
+        // OutputDimensions falls through to builtin
+        assert_eq!(
+            provider.embedding_capability("text-embedding-004", EmbeddingCapability::OutputDimensions),
+            CapabilitySupport::Supported,
+        );
     }
 }
