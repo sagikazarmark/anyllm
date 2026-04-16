@@ -76,7 +76,10 @@ mod wire;
 
 use std::sync::Arc;
 
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, EmbeddingCapabilityResolver};
+use anyllm::{
+    CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability,
+    EmbeddingCapabilityResolver,
+};
 
 /// Cloudflare Workers AI provider implementing `anyllm::ChatProvider`.
 ///
@@ -158,7 +161,10 @@ impl Provider {
 
     /// Install a resolver consulted before the provider's built-in embedding capability logic.
     #[must_use]
-    pub fn with_embedding_capabilities(mut self, resolver: impl EmbeddingCapabilityResolver) -> Self {
+    pub fn with_embedding_capabilities(
+        mut self,
+        resolver: impl EmbeddingCapabilityResolver,
+    ) -> Self {
         self.embedding_capability_resolver = Some(Arc::new(resolver));
         self
     }
