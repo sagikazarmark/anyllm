@@ -120,6 +120,7 @@ impl Provider {
     ) -> CapabilitySupport {
         match capability {
             ChatCapability::Streaming
+            | ChatCapability::NativeStreaming
             | ChatCapability::ToolCalls
             | ChatCapability::StructuredOutput => CapabilitySupport::Supported,
             ChatCapability::ParallelToolCalls

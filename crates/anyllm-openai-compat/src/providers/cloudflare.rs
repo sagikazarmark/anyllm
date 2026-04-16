@@ -83,10 +83,14 @@ impl Cloudflare {
         Self::new(&account_id, &api_token)
     }
 
-    fn default_chat_capabilities() -> [(ChatCapability, CapabilitySupport); 3] {
+    fn default_chat_capabilities() -> [(ChatCapability, CapabilitySupport); 4] {
         [
             (ChatCapability::ToolCalls, CapabilitySupport::Supported),
             (ChatCapability::Streaming, CapabilitySupport::Supported),
+            (
+                ChatCapability::NativeStreaming,
+                CapabilitySupport::Supported,
+            ),
             (
                 ChatCapability::StructuredOutput,
                 CapabilitySupport::Supported,
@@ -142,6 +146,19 @@ mod tests {
             provider.embedding_capability(
                 "@cf/baai/bge-base-en-v1.5",
                 EmbeddingCapability::BatchInput,
+            ),
+            anyllm::CapabilitySupport::Supported,
+        );
+    }
+
+    #[test]
+    fn cloudflare_defaults_include_native_streaming() {
+        use anyllm::{ChatCapability, ChatProvider};
+        let provider = Cloudflare::new("account", "token").unwrap();
+        assert_eq!(
+            provider.chat_capability(
+                "@cf/meta/llama-3.1-8b-instruct",
+                ChatCapability::NativeStreaming
             ),
             anyllm::CapabilitySupport::Supported,
         );

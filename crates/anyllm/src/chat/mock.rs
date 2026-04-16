@@ -621,10 +621,13 @@ impl MockStreamingProvider {
                     .collect(),
                 requests: Vec::new(),
             })),
-            chat_capabilities: HashMap::from([(
-                ChatCapability::Streaming,
-                CapabilitySupport::Supported,
-            )]),
+            chat_capabilities: HashMap::from([
+                (ChatCapability::Streaming, CapabilitySupport::Supported),
+                (
+                    ChatCapability::NativeStreaming,
+                    CapabilitySupport::Supported,
+                ),
+            ]),
             provider_name: "mock_stream",
         }
     }
@@ -952,10 +955,13 @@ impl MockStreamingProviderBuilder {
     pub fn new() -> Self {
         Self {
             streams: Vec::new(),
-            chat_capabilities: HashMap::from([(
-                ChatCapability::Streaming,
-                CapabilitySupport::Supported,
-            )]),
+            chat_capabilities: HashMap::from([
+                (ChatCapability::Streaming, CapabilitySupport::Supported),
+                (
+                    ChatCapability::NativeStreaming,
+                    CapabilitySupport::Supported,
+                ),
+            ]),
             provider_name: "mock_stream",
         }
     }
@@ -1526,6 +1532,32 @@ mod tests {
         assert_eq!(
             provider.chat(&request).await.unwrap().text(),
             Some("second".into())
+        );
+    }
+
+    #[test]
+    fn mock_streaming_provider_defaults_to_native_streaming_supported() {
+        let provider = MockStreamingProvider::new(vec![vec![
+            MockStreamEvent::from(StreamEvent::ResponseStart {
+                id: None,
+                model: None,
+            }),
+            MockStreamEvent::from(StreamEvent::ResponseStop),
+        ]]);
+
+        assert_eq!(
+            provider.chat_capability("test", ChatCapability::NativeStreaming),
+            CapabilitySupport::Supported
+        );
+    }
+
+    #[test]
+    fn mock_provider_defaults_to_native_streaming_unknown() {
+        let provider = MockProvider::with_response(ChatResponseBuilder::new().text("test").build());
+
+        assert_eq!(
+            provider.chat_capability("test", ChatCapability::NativeStreaming),
+            CapabilitySupport::Unknown
         );
     }
 

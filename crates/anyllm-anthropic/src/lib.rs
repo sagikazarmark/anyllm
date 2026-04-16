@@ -108,6 +108,7 @@ impl Provider {
         match capability {
             ChatCapability::ToolCalls
             | ChatCapability::Streaming
+            | ChatCapability::NativeStreaming
             | ChatCapability::ImageInput
             | ChatCapability::ImageOutput
             | ChatCapability::ReasoningOutput
@@ -352,6 +353,15 @@ mod tests {
         );
         assert_eq!(
             provider.chat_capability("claude-opus-4-1", ChatCapability::ReasoningOutput),
+            CapabilitySupport::Supported
+        );
+    }
+
+    #[test]
+    fn builtin_anthropic_capabilities_report_native_streaming() {
+        let provider = Provider::new("test-key").unwrap();
+        assert_eq!(
+            provider.chat_capability("claude-sonnet-4-20250514", ChatCapability::NativeStreaming),
             CapabilitySupport::Supported
         );
     }

@@ -26,6 +26,7 @@ impl ChatProvider for StaticProvider {
     fn chat_capability(&self, _model: &str, capability: ChatCapability) -> CapabilitySupport {
         match capability {
             ChatCapability::Streaming => CapabilitySupport::Supported,
+            ChatCapability::NativeStreaming => CapabilitySupport::Unsupported,
             _ => CapabilitySupport::Unknown,
         }
     }

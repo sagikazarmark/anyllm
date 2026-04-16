@@ -145,7 +145,9 @@ impl Provider {
         capability: ChatCapability,
     ) -> CapabilitySupport {
         match capability {
-            ChatCapability::ToolCalls | ChatCapability::Streaming => CapabilitySupport::Supported,
+            ChatCapability::ToolCalls
+            | ChatCapability::Streaming
+            | ChatCapability::NativeStreaming => CapabilitySupport::Supported,
             ChatCapability::ParallelToolCalls
             | ChatCapability::ImageInput
             | ChatCapability::ImageDetail
@@ -445,6 +447,10 @@ mod tests {
         );
         assert_eq!(
             provider.chat_capability("gpt-4o", ChatCapability::Streaming),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-4o", ChatCapability::NativeStreaming),
             CapabilitySupport::Supported
         );
         assert_eq!(
