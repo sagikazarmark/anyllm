@@ -56,7 +56,10 @@ fn model_with_all_optional_fields() {
     assert_eq!(model.modalities.output, vec!["text", "audio"]);
 
     // Costs
-    let cost = model.cost.as_ref().expect("model-complete should have cost");
+    let cost = model
+        .cost
+        .as_ref()
+        .expect("model-complete should have cost");
     assert_eq!(cost.input, 2.5);
     assert_eq!(cost.output, 10.0);
     assert_eq!(cost.reasoning, Some(15.0));

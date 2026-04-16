@@ -139,11 +139,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyllm-models"
+version = "0.0.1"
+dependencies = [
+ "anyllm",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "anyllm-openai"
 version = "0.0.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
+ "anyllm-models",
  "anyllm-openai-compat",
  "criterion",
  "futures-core",

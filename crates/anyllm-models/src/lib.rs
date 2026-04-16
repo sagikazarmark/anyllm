@@ -38,7 +38,7 @@ pub use provider::Provider;
 mod fetch;
 
 #[cfg(feature = "http")]
-pub use fetch::{fetch, FetchOptions, FetchResult};
+pub use fetch::{FetchOptions, FetchResult, fetch};
 
 #[cfg(feature = "resolver")]
 mod resolver;

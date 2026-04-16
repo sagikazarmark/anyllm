@@ -1,4 +1,7 @@
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, EmbeddingCapabilityResolver, Error, Result};
+use anyllm::{
+    CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability,
+    EmbeddingCapabilityResolver, Error, Result,
+};
 use std::{sync::Arc, time::Duration};
 
 mod chat;
@@ -642,12 +645,16 @@ mod tests {
             });
 
         assert_eq!(
-            provider.embedding_capability("text-embedding-3-small", EmbeddingCapability::OutputDimensions),
+            provider.embedding_capability(
+                "text-embedding-3-small",
+                EmbeddingCapability::OutputDimensions
+            ),
             CapabilitySupport::Unsupported,
         );
         // BatchInput falls through to builtin
         assert_eq!(
-            provider.embedding_capability("text-embedding-3-small", EmbeddingCapability::BatchInput),
+            provider
+                .embedding_capability("text-embedding-3-small", EmbeddingCapability::BatchInput),
             CapabilitySupport::Supported,
         );
     }

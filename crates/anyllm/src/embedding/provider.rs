@@ -32,7 +32,10 @@ pub trait EmbeddingCapabilityResolver: Send + Sync + 'static {
 
 impl<F> EmbeddingCapabilityResolver for F
 where
-    F: for<'a> Fn(&'a str, EmbeddingCapability) -> Option<CapabilitySupport> + Send + Sync + 'static,
+    F: for<'a> Fn(&'a str, EmbeddingCapability) -> Option<CapabilitySupport>
+        + Send
+        + Sync
+        + 'static,
 {
     fn embedding_capability(
         &self,

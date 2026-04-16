@@ -107,12 +107,12 @@ pub mod prelude {
         CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
         ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
         DynChatProvider, DynEmbeddingProvider, EmbeddingCapability, EmbeddingCapabilityResolver,
-        EmbeddingProvider,
-        EmbeddingProviderExt, EmbeddingRequest, EmbeddingResponse, Error, ErrorLog, ExtraMap,
-        FallbackChatProvider, FinishReason, ImageSource, Message, OwnedToolCall, ProviderIdentity,
-        ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
-        RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
-        SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
+        EmbeddingProvider, EmbeddingProviderExt, EmbeddingRequest, EmbeddingResponse, Error,
+        ErrorLog, ExtraMap, FallbackChatProvider, FinishReason, ImageSource, Message,
+        OwnedToolCall, ProviderIdentity, ReasoningConfig, ReasoningEffort, ResponseFormat, Result,
+        RetryPolicy, RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector,
+        StreamEvent, SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage,
+        UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]

@@ -62,7 +62,11 @@ mod tests {
     use super::*;
     use crate::{Limit, Modalities};
 
-    fn test_model(tool_call: bool, structured_output: Option<bool>, modalities: Modalities) -> Model {
+    fn test_model(
+        tool_call: bool,
+        structured_output: Option<bool>,
+        modalities: Modalities,
+    ) -> Model {
         Model {
             id: "test-model".into(),
             name: "Test Model".into(),
@@ -136,7 +140,10 @@ mod tests {
     #[test]
     fn structured_output_some_true_returns_supported() {
         let mut models = HashMap::new();
-        models.insert("m".into(), test_model(false, Some(true), text_only_modalities()));
+        models.insert(
+            "m".into(),
+            test_model(false, Some(true), text_only_modalities()),
+        );
         let resolver = ModelsDevResolver::new(models);
         assert_eq!(
             resolver.chat_capability("m", ChatCapability::StructuredOutput),
@@ -147,7 +154,10 @@ mod tests {
     #[test]
     fn structured_output_some_false_returns_unsupported() {
         let mut models = HashMap::new();
-        models.insert("m".into(), test_model(false, Some(false), text_only_modalities()));
+        models.insert(
+            "m".into(),
+            test_model(false, Some(false), text_only_modalities()),
+        );
         let resolver = ModelsDevResolver::new(models);
         assert_eq!(
             resolver.chat_capability("m", ChatCapability::StructuredOutput),

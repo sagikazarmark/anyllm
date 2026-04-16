@@ -790,10 +790,8 @@ mod resolver_tests {
 
     #[test]
     fn vec_returns_none_when_all_defer() {
-        let resolvers: Vec<Arc<dyn ChatCapabilityResolver>> = vec![
-            Arc::new(FixedResolver(None)),
-            Arc::new(FixedResolver(None)),
-        ];
+        let resolvers: Vec<Arc<dyn ChatCapabilityResolver>> =
+            vec![Arc::new(FixedResolver(None)), Arc::new(FixedResolver(None))];
         assert_eq!(
             resolvers.chat_capability("m", ChatCapability::ToolCalls),
             None,

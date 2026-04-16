@@ -1,4 +1,7 @@
-use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability, EmbeddingCapabilityResolver, Error, Result};
+use anyllm::{
+    CapabilitySupport, ChatCapability, ChatCapabilityResolver, EmbeddingCapability,
+    EmbeddingCapabilityResolver, Error, Result,
+};
 use std::{sync::Arc, time::Duration};
 
 mod chat;
@@ -516,7 +519,8 @@ mod tests {
         );
         // OutputDimensions falls through to builtin
         assert_eq!(
-            provider.embedding_capability("text-embedding-004", EmbeddingCapability::OutputDimensions),
+            provider
+                .embedding_capability("text-embedding-004", EmbeddingCapability::OutputDimensions),
             CapabilitySupport::Supported,
         );
     }
