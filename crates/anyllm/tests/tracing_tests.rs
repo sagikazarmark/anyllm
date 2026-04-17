@@ -835,3 +835,92 @@ async fn tracing_chat_provider_records_stream_ttft_and_partial_output_capture() 
     assert!(output.contains("\"finish_reason\":\"stop\""));
     assert!(output.contains("\"hello\""));
 }
+
+#[tokio::test]
+async fn tracing_chat_provider_records_genai_spec_shape_end_to_end() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model = TracingChatProvider::new(
+        MockProvider::with_response(
+            ChatResponseBuilder::new()
+                .text("Here is the answer")
+                .tool_call(
+                    "call_1",
+                    "search",
+                    serde_json::json!({"query": "rust"}),
+                )
+                .finish_reason(FinishReason::ToolCalls)
+                .model("shape-model")
+                .id("resp-shape")
+                .build(),
+        )
+        .with_provider_name("openai"),
+    )
+    .with_content_capture(TracingContentConfig {
+        capture_input_messages: true,
+        capture_output_messages: true,
+        max_payload_chars: 4096,
+    });
+
+    let request = ChatRequest::new("shape-model")
+        .system("Be concise")
+        .message(Message::user("Describe this"));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let system = chat_span
+        .fields
+        .get("gen_ai.system_instructions")
+        .expect("missing system instructions");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(system).unwrap(),
+        serde_json::json!([{"type": "text", "content": "Be concise"}]),
+    );
+
+    let input = chat_span
+        .fields
+        .get("gen_ai.input.messages")
+        .expect("missing input messages");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(input).unwrap(),
+        serde_json::json!([
+            {
+                "role": "user",
+                "parts": [{"type": "text", "content": "Describe this"}]
+            }
+        ]),
+    );
+
+    let output = chat_span
+        .fields
+        .get("gen_ai.output.messages")
+        .expect("missing output messages");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(output).unwrap(),
+        serde_json::json!([
+            {
+                "role": "assistant",
+                "parts": [
+                    {"type": "text", "content": "Here is the answer"},
+                    {
+                        "type": "tool_call",
+                        "id": "call_1",
+                        "name": "search",
+                        "arguments": {"query": "rust"}
+                    }
+                ],
+                "finish_reason": "tool_call"
+            }
+        ]),
+    );
+
+    assert_eq!(
+        chat_span
+            .fields
+            .get("gen_ai.response.finish_reasons")
+            .map(String::as_str),
+        Some("[\"tool_call\"]"),
+    );
+}

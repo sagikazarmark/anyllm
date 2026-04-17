@@ -6,12 +6,14 @@ use std::time::Instant;
 
 use futures_core::Stream;
 use serde::Serialize;
+use serde_json::{Map, Value};
 use tracing::{Instrument, Span};
 
 use crate::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream, Error,
-    FinishReason, ProviderIdentity, ResponseFormat, Result, StreamCollector, StreamEvent, Usage,
-    UsageMetadataMode,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream,
+    ContentBlock, ContentPart, Error, ExtraMap, FinishReason, ImageSource, Message,
+    ProviderIdentity, ResponseFormat, Result, StreamCollector, StreamEvent, SystemPrompt,
+    ToolResultContent, Usage, UsageMetadataMode, UserContent,
 };
 
 /// A wrapper around any [`ChatProvider`] that emits `tracing` spans with
@@ -209,7 +211,7 @@ where
 /// Opt-in capture settings for tracing GenAI message content.
 #[derive(Debug, Clone, Copy)]
 pub struct TracingContentConfig {
-    /// Whether input messages should be recorded on the span.
+    /// Whether input messages and separate system instructions should be recorded on the span.
     pub capture_input_messages: bool,
     /// Whether output messages should be recorded on the span.
     pub capture_output_messages: bool,
@@ -425,6 +427,7 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
         // attribute, so keep the additional timing signal in a crate-local
         // namespace instead of minting a fake gen_ai.* semantic-convention key.
         "anyllm.response.ttft_ms" = tracing::field::Empty,
+        "gen_ai.system_instructions" = tracing::field::Empty,
         "gen_ai.input.messages" = tracing::field::Empty,
         "gen_ai.output.messages" = tracing::field::Empty,
         "error.type" = tracing::field::Empty,
@@ -477,7 +480,15 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
     }
 
     if cfg.capture_input_messages
-        && let Some(payload) = serialize_redacted(&request.messages, cfg.max_payload_chars)
+        && let Some(system_instructions) = genai_system_instructions(&request.system)
+        && let Some(payload) = serialize_redacted(&system_instructions, cfg.max_payload_chars)
+    {
+        span.record("gen_ai.system_instructions", payload.as_str());
+    }
+
+    if cfg.capture_input_messages
+        && let Some(input_messages) = genai_input_messages(&request.messages)
+        && let Some(payload) = serialize_redacted(&input_messages, cfg.max_payload_chars)
     {
         span.record("gen_ai.input.messages", payload.as_str());
     }
@@ -511,13 +522,216 @@ fn record_output_messages(span: &Span, response: &ChatResponse, cfg: &TracingCon
         return;
     }
 
-    let output = serde_json::json!([{
-        "role": "assistant",
-        "parts": &response.content,
-        "finish_reason": response.finish_reason.as_ref().map(FinishReason::as_str),
-    }]);
+    let output = genai_output_messages(response);
     if let Some(payload) = serialize_redacted(&output, cfg.max_payload_chars) {
         span.record("gen_ai.output.messages", payload.as_str());
+    }
+}
+
+fn genai_system_instructions(system_prompts: &[SystemPrompt]) -> Option<Value> {
+    (!system_prompts.is_empty()).then(|| {
+        Value::Array(
+            system_prompts
+                .iter()
+                .map(|prompt| {
+                    Value::Object(Map::from_iter([
+                        ("type".to_owned(), Value::String("text".to_owned())),
+                        ("content".to_owned(), Value::String(prompt.content.clone())),
+                    ]))
+                })
+                .collect(),
+        )
+    })
+}
+
+fn genai_input_messages(messages: &[Message]) -> Option<Value> {
+    (!messages.is_empty()).then(|| Value::Array(messages.iter().map(genai_input_message).collect()))
+}
+
+fn genai_input_message(message: &Message) -> Value {
+    match message {
+        Message::User {
+            content,
+            name,
+            extensions,
+        } => {
+            let parts = match content {
+                UserContent::Text(text) => vec![genai_text_part(text)],
+                UserContent::Parts(parts) => parts.iter().map(genai_content_part).collect(),
+            };
+            genai_chat_message("user", parts, name.as_deref(), extensions.as_ref())
+        }
+        Message::Assistant {
+            content,
+            name,
+            extensions,
+        } => {
+            let parts = content.iter().map(genai_content_block).collect();
+            genai_chat_message("assistant", parts, name.as_deref(), extensions.as_ref())
+        }
+        Message::Tool {
+            tool_call_id,
+            name,
+            content,
+            is_error,
+            extensions,
+        } => {
+            let mut part = Map::from_iter([
+                (
+                    "type".to_owned(),
+                    Value::String("tool_call_response".to_owned()),
+                ),
+                ("id".to_owned(), Value::String(tool_call_id.clone())),
+                ("response".to_owned(), genai_tool_result(content)),
+            ]);
+            if let Some(is_error) = is_error {
+                part.insert("is_error".to_owned(), Value::Bool(*is_error));
+            }
+
+            genai_chat_message(
+                "tool",
+                vec![Value::Object(part)],
+                Some(name.as_str()),
+                extensions.as_ref(),
+            )
+        }
+    }
+}
+
+fn genai_output_messages(response: &ChatResponse) -> Value {
+    Value::Array(vec![Value::Object(Map::from_iter([
+        ("role".to_owned(), Value::String("assistant".to_owned())),
+        (
+            "parts".to_owned(),
+            Value::Array(response.content.iter().map(genai_content_block).collect()),
+        ),
+        (
+            "finish_reason".to_owned(),
+            Value::String(response.finish_reason.as_ref().map_or_else(
+                || "unknown".to_owned(),
+                |reason| genai_finish_reason(reason).to_owned(),
+            )),
+        ),
+    ]))])
+}
+
+fn genai_chat_message(
+    role: &str,
+    parts: Vec<Value>,
+    name: Option<&str>,
+    extensions: Option<&ExtraMap>,
+) -> Value {
+    let mut message = Map::from_iter([
+        ("role".to_owned(), Value::String(role.to_owned())),
+        ("parts".to_owned(), Value::Array(parts)),
+    ]);
+    if let Some(name) = name {
+        message.insert("name".to_owned(), Value::String(name.to_owned()));
+    }
+    merge_extension_fields(&mut message, extensions, &["role", "parts", "name"]);
+    Value::Object(message)
+}
+
+fn genai_tool_result(content: &ToolResultContent) -> Value {
+    match content {
+        ToolResultContent::Text(text) => Value::String(text.clone()),
+        ToolResultContent::Parts(parts) => {
+            Value::Array(parts.iter().map(genai_content_part).collect())
+        }
+    }
+}
+
+fn genai_content_part(part: &ContentPart) -> Value {
+    match part {
+        ContentPart::Text { text } => genai_text_part(text),
+        ContentPart::Image { source, detail } => {
+            let mut value = genai_image_part(source);
+            if let Some(detail) = detail
+                && let Value::Object(map) = &mut value
+            {
+                map.insert("detail".to_owned(), Value::String(detail.clone()));
+            }
+            value
+        }
+        ContentPart::Other { type_name, data } => genai_generic_part(type_name, data),
+    }
+}
+
+fn genai_content_block(block: &ContentBlock) -> Value {
+    match block {
+        ContentBlock::Text { text } => genai_text_part(text),
+        ContentBlock::Image { source } => genai_image_part(source),
+        ContentBlock::ToolCall {
+            id,
+            name,
+            arguments,
+        } => Value::Object(Map::from_iter([
+            ("type".to_owned(), Value::String("tool_call".to_owned())),
+            ("id".to_owned(), Value::String(id.clone())),
+            ("name".to_owned(), Value::String(name.clone())),
+            (
+                "arguments".to_owned(),
+                serde_json::from_str(arguments)
+                    .unwrap_or_else(|_| Value::String(arguments.clone())),
+            ),
+        ])),
+        ContentBlock::Reasoning { text, signature } => {
+            let mut part = Map::from_iter([
+                ("type".to_owned(), Value::String("reasoning".to_owned())),
+                ("content".to_owned(), Value::String(text.clone())),
+            ]);
+            if let Some(signature) = signature {
+                part.insert("signature".to_owned(), Value::String(signature.clone()));
+            }
+            Value::Object(part)
+        }
+        ContentBlock::Other { type_name, data } => genai_generic_part(type_name, data),
+    }
+}
+
+fn genai_text_part(text: &str) -> Value {
+    Value::Object(Map::from_iter([
+        ("type".to_owned(), Value::String("text".to_owned())),
+        ("content".to_owned(), Value::String(text.to_owned())),
+    ]))
+}
+
+fn genai_image_part(source: &ImageSource) -> Value {
+    match source {
+        ImageSource::Url { url } => Value::Object(Map::from_iter([
+            ("type".to_owned(), Value::String("uri".to_owned())),
+            ("modality".to_owned(), Value::String("image".to_owned())),
+            ("uri".to_owned(), Value::String(url.clone())),
+        ])),
+        ImageSource::Base64 { media_type, data } => Value::Object(Map::from_iter([
+            ("type".to_owned(), Value::String("blob".to_owned())),
+            ("modality".to_owned(), Value::String("image".to_owned())),
+            ("mime_type".to_owned(), Value::String(media_type.clone())),
+            ("content".to_owned(), Value::String(data.clone())),
+        ])),
+    }
+}
+
+fn genai_generic_part(type_name: &str, data: &ExtraMap) -> Value {
+    let mut part = Map::from_iter([("type".to_owned(), Value::String(type_name.to_owned()))]);
+    merge_extension_fields(&mut part, Some(data), &["type"]);
+    Value::Object(part)
+}
+
+fn merge_extension_fields(
+    target: &mut Map<String, Value>,
+    source: Option<&ExtraMap>,
+    reserved: &[&str],
+) {
+    let Some(source) = source else {
+        return;
+    };
+
+    for (key, value) in source {
+        if reserved.iter().any(|reserved_key| key == reserved_key) {
+            continue;
+        }
+        target.insert(key.clone(), value.clone());
     }
 }
 
@@ -595,13 +809,28 @@ fn record_usage(span: &Span, usage: &Usage) {
 }
 
 fn record_finish_reason(span: &Span, reason: &FinishReason) {
-    let reasons = serde_json::to_string(&[reason.as_str()]).unwrap_or_default();
+    let reasons = serde_json::to_string(&[genai_finish_reason(reason)]).unwrap_or_default();
     span.record("gen_ai.response.finish_reasons", reasons.as_str());
+}
+
+fn genai_finish_reason(reason: &FinishReason) -> &str {
+    match reason {
+        FinishReason::ToolCalls => "tool_call",
+        _ => reason.as_str(),
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::otel_genai_provider_name;
+    use super::{
+        genai_finish_reason, genai_input_messages, genai_output_messages,
+        genai_system_instructions, otel_genai_provider_name,
+    };
+    use crate::{
+        ChatResponse, ContentBlock, ContentPart, FinishReason, ImageSource, Message, SystemPrompt,
+        ToolResultContent,
+    };
+    use serde_json::json;
 
     #[test]
     fn otel_provider_name_uses_standard_values_when_known() {
@@ -618,5 +847,160 @@ mod tests {
             otel_genai_provider_name("custom_provider"),
             "custom_provider"
         );
+    }
+
+    #[test]
+    fn genai_system_instructions_use_spec_shape() {
+        let prompts = vec![
+            SystemPrompt::new("Be concise"),
+            SystemPrompt::new("Answer in Rust"),
+        ];
+
+        assert_eq!(
+            genai_system_instructions(&prompts),
+            Some(json!([
+                {"type": "text", "content": "Be concise"},
+                {"type": "text", "content": "Answer in Rust"}
+            ]))
+        );
+    }
+
+    #[test]
+    fn genai_input_messages_use_spec_shapes() {
+        let messages = vec![
+            Message::user(vec![
+                ContentPart::text("Describe this"),
+                ContentPart::Image {
+                    source: ImageSource::Url {
+                        url: "https://example.com/cat.png".into(),
+                    },
+                    detail: Some("high".into()),
+                },
+            ])
+            .with_extension("trace_id", json!(123)),
+            Message::Assistant {
+                content: vec![
+                    ContentBlock::Text {
+                        text: "Calling tool".into(),
+                    },
+                    ContentBlock::ToolCall {
+                        id: "call_1".into(),
+                        name: "search".into(),
+                        arguments: "{\"query\":\"rust\"}".into(),
+                    },
+                ],
+                name: Some("assistant-1".into()),
+                extensions: None,
+            },
+            Message::Tool {
+                tool_call_id: "call_1".into(),
+                name: "search".into(),
+                content: ToolResultContent::Parts(vec![ContentPart::text("docs.rs")]),
+                is_error: Some(true),
+                extensions: None,
+            },
+        ];
+
+        assert_eq!(
+            genai_input_messages(&messages),
+            Some(json!([
+                {
+                    "role": "user",
+                    "parts": [
+                        {"type": "text", "content": "Describe this"},
+                        {
+                            "type": "uri",
+                            "modality": "image",
+                            "uri": "https://example.com/cat.png",
+                            "detail": "high"
+                        }
+                    ],
+                    "trace_id": 123
+                },
+                {
+                    "role": "assistant",
+                    "parts": [
+                        {"type": "text", "content": "Calling tool"},
+                        {
+                            "type": "tool_call",
+                            "id": "call_1",
+                            "name": "search",
+                            "arguments": {"query": "rust"}
+                        }
+                    ],
+                    "name": "assistant-1"
+                },
+                {
+                    "role": "tool",
+                    "parts": [
+                        {
+                            "type": "tool_call_response",
+                            "id": "call_1",
+                            "response": [
+                                {"type": "text", "content": "docs.rs"}
+                            ],
+                            "is_error": true
+                        }
+                    ],
+                    "name": "search"
+                }
+            ]))
+        );
+    }
+
+    #[test]
+    fn genai_output_messages_use_spec_shape_and_finish_reason_mapping() {
+        let response = ChatResponse::new(vec![
+            ContentBlock::Reasoning {
+                text: "Need to check docs".into(),
+                signature: Some("sig_1".into()),
+            },
+            ContentBlock::Text {
+                text: "Here is the answer".into(),
+            },
+        ])
+        .finish_reason(FinishReason::ToolCalls);
+
+        assert_eq!(
+            genai_output_messages(&response),
+            json!([
+                {
+                    "role": "assistant",
+                    "parts": [
+                        {
+                            "type": "reasoning",
+                            "content": "Need to check docs",
+                            "signature": "sig_1"
+                        },
+                        {"type": "text", "content": "Here is the answer"}
+                    ],
+                    "finish_reason": "tool_call"
+                }
+            ])
+        );
+    }
+
+    #[test]
+    fn genai_output_messages_use_unknown_finish_reason_when_missing() {
+        let response = ChatResponse::new(vec![ContentBlock::Text {
+            text: "Hello".into(),
+        }]);
+
+        assert_eq!(
+            genai_output_messages(&response),
+            json!([
+                {
+                    "role": "assistant",
+                    "parts": [{"type": "text", "content": "Hello"}],
+                    "finish_reason": "unknown"
+                }
+            ])
+        );
+    }
+
+    #[test]
+    fn genai_finish_reason_maps_tool_calls_to_tool_call() {
+        assert_eq!(genai_finish_reason(&FinishReason::ToolCalls), "tool_call");
+        assert_eq!(genai_finish_reason(&FinishReason::Stop), "stop");
     }
 }
