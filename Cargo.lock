@@ -61,6 +61,7 @@ version = "0.0.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
+ "anyllm-models",
  "criterion",
  "eventsource-stream",
  "futures-core",
@@ -124,6 +125,7 @@ version = "0.0.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
+ "anyllm-models",
  "criterion",
  "eventsource-stream",
  "futures-core",

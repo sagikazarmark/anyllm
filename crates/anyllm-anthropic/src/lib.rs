@@ -13,6 +13,20 @@ mod wire;
 pub use cache_control::CacheControl;
 pub use options::ChatRequestOptions;
 
+#[cfg(feature = "models-dev")]
+pub use anyllm_models::ModelsDevResolver;
+
+/// Construct a [`ModelsDevResolver`] from the embedded `models.dev` Anthropic
+/// snapshot.
+///
+/// The snapshot is checked into this crate and compiled in via
+/// `include_str!()`. It provides advisory capability answers for Anthropic
+/// models.
+#[cfg(feature = "models-dev")]
+pub fn models_dev_chat_capabilities() -> serde_json::Result<ModelsDevResolver> {
+    ModelsDevResolver::from_provider_json(include_str!("../models-dev.json"))
+}
+
 #[cfg(feature = "http-tracing")]
 type HttpClient = reqwest_middleware::ClientWithMiddleware;
 #[cfg(not(feature = "http-tracing"))]
@@ -147,6 +161,11 @@ impl Provider {
     }
 
     /// Install a resolver consulted before the provider's built-in capability logic.
+    ///
+    /// Calling this again **replaces** any previously installed resolver. To
+    /// layer multiple resolvers, pass a `Vec<Arc<dyn ChatCapabilityResolver>>`
+    /// (or a custom composite): resolvers are consulted in order and the first
+    /// `Some(...)` wins.
     #[must_use]
     pub fn with_chat_capabilities(self, resolver: impl ChatCapabilityResolver) -> Self {
         Self {
@@ -435,5 +454,37 @@ mod tests {
             Some(DEFAULT_HTTP_TIMEOUT)
         );
         assert_eq!(request_timeout(true, Some(DEFAULT_HTTP_TIMEOUT)), None);
+    }
+
+    #[test]
+    #[cfg(feature = "models-dev")]
+    fn models_dev_snapshot_deserializes_successfully() {
+        let resolver = models_dev_chat_capabilities().unwrap();
+        assert_ne!(
+            resolver.chat_capability("claude-sonnet-4-20250514", ChatCapability::ToolCalls),
+            None,
+            "claude-sonnet-4-20250514 should be present in the snapshot",
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "models-dev")]
+    fn models_dev_resolver_integrates_with_provider() {
+        // Without the resolver, ImageOutput returns Supported from the builtin.
+        let bare = Provider::new("test-key").unwrap();
+        assert_eq!(
+            bare.chat_capability("claude-sonnet-4-20250514", ChatCapability::ImageOutput),
+            CapabilitySupport::Supported,
+        );
+
+        // With the resolver installed, the snapshot should answer Unsupported
+        // because "image" is not in the model's output modalities.
+        let provider = Provider::new("test-key")
+            .unwrap()
+            .with_chat_capabilities(models_dev_chat_capabilities().unwrap());
+        assert_eq!(
+            provider.chat_capability("claude-sonnet-4-20250514", ChatCapability::ImageOutput),
+            CapabilitySupport::Unsupported,
+        );
     }
 }

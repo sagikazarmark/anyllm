@@ -15,6 +15,20 @@ mod wire;
 
 pub use options::{ChatRequestOptions, EmbeddingRequestOptions};
 
+#[cfg(feature = "models-dev")]
+pub use anyllm_models::ModelsDevResolver;
+
+/// Construct a [`ModelsDevResolver`] from the embedded `models.dev` Gemini
+/// snapshot.
+///
+/// The snapshot is checked into this crate and compiled in via
+/// `include_str!()`. It provides advisory capability answers for Gemini
+/// models.
+#[cfg(feature = "models-dev")]
+pub fn models_dev_chat_capabilities() -> serde_json::Result<ModelsDevResolver> {
+    ModelsDevResolver::from_provider_json(include_str!("../models-dev.json"))
+}
+
 #[cfg(feature = "http-tracing")]
 type HttpClient = reqwest_middleware::ClientWithMiddleware;
 #[cfg(not(feature = "http-tracing"))]
@@ -166,6 +180,11 @@ impl Provider {
     }
 
     /// Install a resolver consulted before the provider's built-in capability logic.
+    ///
+    /// Calling this again **replaces** any previously installed resolver. To
+    /// layer multiple resolvers, pass a `Vec<Arc<dyn ChatCapabilityResolver>>`
+    /// (or a custom composite): resolvers are consulted in order and the first
+    /// `Some(...)` wins.
     #[must_use]
     pub fn with_chat_capabilities(self, resolver: impl ChatCapabilityResolver) -> Self {
         Self {
@@ -181,6 +200,11 @@ impl Provider {
     }
 
     /// Install a resolver consulted before the provider's built-in embedding capability logic.
+    ///
+    /// Calling this again **replaces** any previously installed resolver. To
+    /// layer multiple resolvers, pass a
+    /// `Vec<Arc<dyn EmbeddingCapabilityResolver>>` (or a custom composite):
+    /// resolvers are consulted in order and the first `Some(...)` wins.
     #[must_use]
     pub fn with_embedding_capabilities(self, resolver: impl EmbeddingCapabilityResolver) -> Self {
         Self {
@@ -522,6 +546,38 @@ mod tests {
             provider
                 .embedding_capability("text-embedding-004", EmbeddingCapability::OutputDimensions),
             CapabilitySupport::Supported,
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "models-dev")]
+    fn models_dev_snapshot_deserializes_successfully() {
+        let resolver = models_dev_chat_capabilities().unwrap();
+        assert_ne!(
+            resolver.chat_capability("gemini-2.5-pro", ChatCapability::ToolCalls),
+            None,
+            "gemini-2.5-pro should be present in the snapshot",
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "models-dev")]
+    fn models_dev_resolver_integrates_with_provider() {
+        // Without the resolver, ImageOutput returns Supported from the builtin.
+        let bare = Provider::new("test-key").unwrap();
+        assert_eq!(
+            bare.chat_capability("gemini-2.5-pro", ChatCapability::ImageOutput),
+            CapabilitySupport::Supported,
+        );
+
+        // With the resolver installed, the snapshot should answer Unsupported
+        // because "image" is not in the model's output modalities.
+        let provider = Provider::new("test-key")
+            .unwrap()
+            .with_chat_capabilities(models_dev_chat_capabilities().unwrap());
+        assert_eq!(
+            provider.chat_capability("gemini-2.5-pro", ChatCapability::ImageOutput),
+            CapabilitySupport::Unsupported,
         );
     }
 }

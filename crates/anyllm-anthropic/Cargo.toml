@@ -12,6 +12,7 @@ categories = { workspace = true }
 
 [dependencies]
 anyllm = { workspace = true }
+anyllm-models = { workspace = true, features = ["resolver"], optional = true }
 eventsource-stream = { workspace = true }
 futures-core = { workspace = true }
 futures-util = { workspace = true }
@@ -31,6 +32,7 @@ tokio = { workspace = true, features = ["macros"] }
 default = ["extract", "reqwest/default-tls"]
 extract = ["anyllm/extract"]
 http-tracing = ["dep:reqwest-middleware", "dep:reqwest-tracing"]
+models-dev = ["dep:anyllm-models"]
 bench-internals = []
 
 [package.metadata.docs.rs]

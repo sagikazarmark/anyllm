@@ -255,6 +255,11 @@ impl Provider {
     }
 
     /// Install a resolver consulted before the provider's built-in capability logic.
+    ///
+    /// Calling this again **replaces** any previously installed resolver. To
+    /// layer multiple resolvers, pass a `Vec<Arc<dyn ChatCapabilityResolver>>`
+    /// (or a custom composite): resolvers are consulted in order and the first
+    /// `Some(...)` wins.
     #[must_use]
     pub fn with_chat_capabilities(self, resolver: impl ChatCapabilityResolver) -> Self {
         Self {
@@ -272,6 +277,11 @@ impl Provider {
     }
 
     /// Install a resolver consulted before the provider's built-in embedding capability logic.
+    ///
+    /// Calling this again **replaces** any previously installed resolver. To
+    /// layer multiple resolvers, pass a
+    /// `Vec<Arc<dyn EmbeddingCapabilityResolver>>` (or a custom composite):
+    /// resolvers are consulted in order and the first `Some(...)` wins.
     #[must_use]
     pub fn with_embedding_capabilities(self, resolver: impl EmbeddingCapabilityResolver) -> Self {
         Self {
