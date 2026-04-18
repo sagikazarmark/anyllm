@@ -19,6 +19,14 @@ use crate::{
 /// [OTel Gen AI semantic convention](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 /// field names for each `chat()` and `chat_stream()` call.
 ///
+/// Attributes that are not defined in the OTEL GenAI semconv are emitted under
+/// a crate-local `anyllm.*` prefix rather than minting `gen_ai.*` keys. This
+/// applies to retry (`anyllm.retry.*`), fallback (`anyllm.fallback.*`), TTFT
+/// (`anyllm.response.ttft_ms`), and to vendor extensions carried by
+/// `Message::{User,Assistant,Tool}.extensions`, which are recorded as an
+/// `anyllm.extensions` object on the message; look there for provider-specific
+/// metadata rather than at the message root.
+///
 /// ```rust,no_run
 /// use anyllm::prelude::*;
 ///
@@ -646,11 +654,14 @@ fn build_message(
     if let Some(extensions) = extensions
         && !extensions.is_empty()
     {
-        // ChatMessage permits additionalProperties; pass extensions through as a
-        // sibling object so provider-specific metadata is still available for
-        // debugging (with redaction applied before recording).
+        // Namespace message-level `extensions` under `anyllm.extensions` rather
+        // than emitting a bare `extensions` key: the OTEL GenAI schema has no
+        // slot for it, and a dotted crate-local key cannot collide with any
+        // current or future semconv-defined field. Matches the same discipline
+        // applied to `anyllm.retry.*`, `anyllm.fallback.*`, and
+        // `anyllm.tool_name` elsewhere in this module.
         map.insert(
-            "extensions".into(),
+            "anyllm.extensions".into(),
             serde_json::Value::Object(extensions.clone()),
         );
     }

@@ -2,7 +2,7 @@
 
 use anyllm::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse,
-    ChatResponseBuilder, ChatStreamExt, ContentBlock, ContentPart, FallbackChatProvider,
+    ChatResponseBuilder, ChatStreamExt, ContentBlock, ContentPart, ExtraMap, FallbackChatProvider,
     FinishReason, ImageSource, Message, MockProvider, MockStreamEvent, MockStreamingProvider,
     ProviderIdentity, RetryPolicy, RetryingChatProvider, StreamBlockType, StreamEvent,
     TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
@@ -1223,5 +1223,114 @@ async fn tracing_records_streamed_output_in_otel_semconv_shape() {
     assert!(
         assistant.get("content").is_none(),
         "streamed assistant message must not emit a legacy message-level `content` field"
+    );
+}
+
+#[tokio::test]
+async fn tracing_records_other_content_via_generic_part_passthrough() {
+    let (spans, _guard) = install_span_recorder();
+
+    let mut assistant_data = ExtraMap::new();
+    assistant_data.insert("citation_url".into(), "https://example.com".into());
+    assistant_data.insert("confidence".into(), serde_json::json!(0.9));
+    let assistant_response = ChatResponse::new(vec![ContentBlock::Other {
+        type_name: "citation".into(),
+        data: assistant_data,
+    }])
+    .finish_reason(FinishReason::Stop);
+
+    let model = TracingChatProvider::new(MockProvider::with_response(assistant_response))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let mut user_data = ExtraMap::new();
+    user_data.insert("format".into(), "wav".into());
+    user_data.insert("data".into(), "base64-audio".into());
+    let request = ChatRequest::new("test-model").message(Message::user(vec![ContentPart::Other {
+        type_name: "input_audio".into(),
+        data: user_data,
+    }]));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let input: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.input.messages")
+            .expect("missing input messages"),
+    )
+    .expect("input payload is JSON");
+    let user_part = &input[0]["parts"][0];
+    assert_eq!(
+        user_part["type"], "input_audio",
+        "type_name must win as the part `type`"
+    );
+    assert_eq!(
+        user_part["format"], "wav",
+        "unknown keys must pass through verbatim"
+    );
+    assert_eq!(
+        user_part["data"], "base64-audio",
+        "unknown keys must pass through verbatim"
+    );
+
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+    let assistant_part = &output[0]["parts"][0];
+    assert_eq!(assistant_part["type"], "citation");
+    assert_eq!(assistant_part["citation_url"], "https://example.com");
+    assert_eq!(assistant_part["confidence"], 0.9);
+}
+
+#[tokio::test]
+async fn tracing_records_message_extensions_under_anyllm_namespace() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+
+    let mut extensions = ExtraMap::new();
+    extensions.insert(
+        "cache_control".into(),
+        serde_json::json!({"type": "ephemeral"}),
+    );
+    let request = ChatRequest::new("test-model").message(Message::User {
+        content: anyllm::UserContent::Text("hi".into()),
+        name: None,
+        extensions: Some(extensions),
+    });
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let input: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.input.messages")
+            .expect("missing input messages"),
+    )
+    .expect("input payload is JSON");
+    let user = &input[0];
+    assert!(
+        user.get("extensions").is_none(),
+        "bare `extensions` key must not be emitted at the message root"
+    );
+    assert_eq!(
+        user["anyllm.extensions"]["cache_control"]["type"], "ephemeral",
+        "vendor extensions must be namespaced under `anyllm.extensions`"
     );
 }
