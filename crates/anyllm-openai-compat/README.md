@@ -32,6 +32,21 @@ An adapter crate usually does three things:
 `crates/anyllm-openai-compat/tests/reuse_end_to_end.rs` is the in-tree proof
 that the shared request/response/stream helpers can power a thin custom adapter.
 
+## Observability
+
+`ProviderBuilder::build()` leaves `provider_name` set to `"unknown"` when the
+caller does not specify one. That value surfaces as
+`gen_ai.provider.name="unknown"` on tracing spans, which is a deliberate
+"not configured" signal rather than a generic label that misrepresents the
+upstream.
+
+Pick one:
+
+- use a preset from [`providers`](src/providers.rs) (e.g. `Cloudflare`),
+  which injects the correct identity;
+- call `.provider_name("your-provider")` on the builder before `.build()`
+  when wiring a custom upstream.
+
 ## Why this exists
 
 Without this crate, every OpenAI-style provider adapter would need to duplicate:

@@ -68,7 +68,7 @@ impl<T: ChatProvider> ChatProvider for RetryingChatProvider<T> {
         #[cfg(feature = "tracing")]
         {
             let span = Span::current();
-            span.record("gen_ai.retry.max_attempts", max_attempts as u64);
+            span.record("anyllm.retry.max_attempts", max_attempts as u64);
         }
 
         for attempt in 1..=max_attempts {
@@ -183,10 +183,10 @@ fn default_should_retry(error: &Error) -> bool {
 #[cfg(feature = "tracing")]
 fn record_retry_attempt(attempt: usize, error: &Error, delay: Duration) {
     let span = Span::current();
-    span.record("gen_ai.retry.used", true);
-    span.record("gen_ai.retry.attempts", attempt as u64);
-    span.record("gen_ai.retry.last_delay_ms", delay.as_millis() as u64);
-    span.record("gen_ai.retry.last_error_type", error.telemetry_type());
+    span.record("anyllm.retry.used", true);
+    span.record("anyllm.retry.attempts", attempt as u64);
+    span.record("anyllm.retry.last_delay_ms", delay.as_millis() as u64);
+    span.record("anyllm.retry.last_error_type", error.telemetry_type());
 }
 
 fn retry_after_hint(error: &Error) -> Option<Duration> {

@@ -1,10 +1,11 @@
 #![cfg(all(feature = "tracing", feature = "mock"))]
 
 use anyllm::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponseBuilder,
-    ChatStreamExt, FallbackChatProvider, FinishReason, Message, MockProvider, MockStreamEvent,
-    MockStreamingProvider, ProviderIdentity, RetryPolicy, RetryingChatProvider, StreamBlockType,
-    StreamEvent, TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse,
+    ChatResponseBuilder, ChatStreamExt, ContentBlock, ContentPart, ExtraMap, FallbackChatProvider,
+    FinishReason, ImageSource, Message, MockProvider, MockStreamEvent, MockStreamingProvider,
+    ProviderIdentity, RetryPolicy, RetryingChatProvider, StreamBlockType, StreamEvent,
+    TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
 };
 use futures_util::StreamExt;
 use std::collections::HashMap;
@@ -344,28 +345,28 @@ async fn tracing_records_retry_attributes() {
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.max_attempts")
+            .get("anyllm.retry.max_attempts")
             .map(String::as_str),
         Some("2")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.used")
+            .get("anyllm.retry.used")
             .map(String::as_str),
         Some("true")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.attempts")
+            .get("anyllm.retry.attempts")
             .map(String::as_str),
         Some("2")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.last_error_type")
+            .get("anyllm.retry.last_error_type")
             .map(String::as_str),
         Some("timeout")
     );
@@ -401,21 +402,21 @@ async fn tracing_records_fallback_attributes() {
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.fallback.used")
+            .get("anyllm.fallback.used")
             .map(String::as_str),
         Some("true")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.fallback.provider")
+            .get("anyllm.fallback.provider")
             .map(String::as_str),
         Some("fallback_provider")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.fallback.error_type")
+            .get("anyllm.fallback.error_type")
             .map(String::as_str),
         Some("overloaded")
     );
@@ -834,4 +835,502 @@ async fn tracing_chat_provider_records_stream_ttft_and_partial_output_capture() 
         .expect("missing output messages");
     assert!(output.contains("\"finish_reason\":\"stop\""));
     assert!(output.contains("\"hello\""));
+}
+
+#[tokio::test]
+async fn tracing_sets_otel_name_override_for_span() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model = TracingChatProvider::new(standard_provider());
+    let _ = model
+        .chat(&ChatRequest::new("gpt-4o-mini").message(Message::user("hi")))
+        .await
+        .unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    assert_eq!(
+        chat_span.fields.get("otel.name").map(String::as_str),
+        Some("chat gpt-4o-mini"),
+        "tracing-opentelemetry bridge needs otel.name to produce the spec-shaped span name"
+    );
+}
+
+#[tokio::test]
+async fn tracing_records_tool_result_message_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model")
+        .message(Message::user("use the tool"))
+        .message(Message::tool_result("call_1", "lookup", "rainy, 57°F"));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let input_raw = chat_span
+        .fields
+        .get("gen_ai.input.messages")
+        .expect("missing input messages");
+    let input: serde_json::Value = serde_json::from_str(input_raw).expect("input payload is JSON");
+    let messages = input.as_array().expect("input is array");
+    assert_eq!(messages.len(), 2);
+
+    let tool_msg = &messages[1];
+    assert_eq!(tool_msg["role"], "tool");
+    let parts = tool_msg["parts"].as_array().expect("parts is array");
+    assert_eq!(parts.len(), 1);
+    assert_eq!(parts[0]["type"], "tool_call_response");
+    assert_eq!(parts[0]["id"], "call_1");
+    assert_eq!(parts[0]["response"], "rainy, 57°F");
+    assert_eq!(
+        parts[0]["anyllm.tool_name"], "lookup",
+        "tool name must be preserved under the crate-local key"
+    );
+}
+
+#[tokio::test]
+async fn tracing_records_messages_in_otel_semconv_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let tool_call_response = ChatResponseBuilder::new()
+        .tool_call(
+            "call_1",
+            "lookup",
+            serde_json::json!({"city": "Paris", "api_key": "top-secret"}),
+        )
+        .finish_reason(FinishReason::ToolCalls)
+        .build();
+
+    let model = TracingChatProvider::new(MockProvider::with_response(tool_call_response))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model").message(Message::user("Weather in Paris?"));
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let input_raw = chat_span
+        .fields
+        .get("gen_ai.input.messages")
+        .expect("missing input messages");
+    let input: serde_json::Value = serde_json::from_str(input_raw).expect("input payload is JSON");
+    let input_arr = input.as_array().expect("input is array");
+    assert_eq!(input_arr.len(), 1);
+    let user = &input_arr[0];
+    assert_eq!(user["role"], "user");
+    let parts = user["parts"].as_array().expect("parts is array");
+    assert_eq!(parts.len(), 1);
+    assert_eq!(parts[0]["type"], "text");
+    assert_eq!(parts[0]["content"], "Weather in Paris?");
+    assert!(
+        parts[0].get("text").is_none(),
+        "legacy 'text' field must not be emitted"
+    );
+    assert!(
+        user.get("content").is_none(),
+        "legacy message-level 'content' field must not be emitted"
+    );
+
+    let output_raw = chat_span
+        .fields
+        .get("gen_ai.output.messages")
+        .expect("missing output messages");
+    let output: serde_json::Value =
+        serde_json::from_str(output_raw).expect("output payload is JSON");
+    let assistant = &output[0];
+    assert_eq!(assistant["role"], "assistant");
+    assert_eq!(assistant["finish_reason"], "tool_calls");
+    let parts = assistant["parts"].as_array().expect("parts is array");
+    assert_eq!(parts[0]["type"], "tool_call");
+    assert_eq!(parts[0]["id"], "call_1");
+    assert_eq!(parts[0]["name"], "lookup");
+
+    let args = &parts[0]["arguments"];
+    assert!(args.is_object(), "tool_call arguments must be an object");
+    assert_eq!(args["city"], "Paris");
+    assert_eq!(args["api_key"], "[REDACTED]");
+}
+
+#[tokio::test]
+async fn tracing_records_system_instructions_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model")
+        .system("You are concise.")
+        .system("Answer in English.")
+        .message(Message::user("hi"));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let raw = chat_span
+        .fields
+        .get("gen_ai.system_instructions")
+        .expect("missing system instructions");
+    let value: serde_json::Value = serde_json::from_str(raw).expect("system payload is JSON");
+    let parts = value.as_array().expect("system instructions is array");
+    assert_eq!(parts.len(), 2);
+    assert_eq!(parts[0]["type"], "text");
+    assert_eq!(parts[0]["content"], "You are concise.");
+    assert_eq!(parts[1]["content"], "Answer in English.");
+}
+
+#[tokio::test]
+async fn tracing_omits_system_instructions_when_capture_disabled_or_empty() {
+    let (spans, _guard) = install_span_recorder();
+
+    let captured =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+    let _ = captured
+        .chat(&ChatRequest::new("test-model").message(Message::user("hi")))
+        .await
+        .unwrap();
+
+    let uncaptured =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: false,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+    let _ = uncaptured
+        .chat(
+            &ChatRequest::new("test-model")
+                .system("Be concise.")
+                .message(Message::user("hi")),
+        )
+        .await
+        .unwrap();
+
+    for span in spans.lock().unwrap().iter().filter(|s| s.name == "chat") {
+        assert!(
+            !span.fields.contains_key("gen_ai.system_instructions"),
+            "system instructions must not be recorded when empty or when capture is disabled"
+        );
+    }
+}
+
+#[tokio::test]
+async fn tracing_records_image_parts_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let assistant_image = ChatResponse::new(vec![ContentBlock::Image {
+        source: ImageSource::Url {
+            url: "https://example.com/out.png".into(),
+        },
+    }])
+    .finish_reason(FinishReason::Stop);
+
+    let model = TracingChatProvider::new(MockProvider::with_response(assistant_image))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model").message(Message::user(vec![
+        ContentPart::text("describe these"),
+        ContentPart::Image {
+            source: ImageSource::Url {
+                url: "https://example.com/in.png".into(),
+            },
+            detail: Some("high".into()),
+        },
+        ContentPart::image_base64("image/png", "aGVsbG8="),
+    ]));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let input: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.input.messages")
+            .expect("missing input messages"),
+    )
+    .expect("input payload is JSON");
+    let parts = input[0]["parts"].as_array().expect("user parts array");
+    assert_eq!(parts.len(), 3);
+
+    assert_eq!(parts[1]["type"], "uri");
+    assert_eq!(parts[1]["modality"], "image");
+    assert_eq!(parts[1]["uri"], "https://example.com/in.png");
+    assert_eq!(parts[1]["detail"], "high");
+    assert!(parts[1].get("url").is_none(), "raw 'url' must not leak");
+
+    assert_eq!(parts[2]["type"], "blob");
+    assert_eq!(parts[2]["modality"], "image");
+    assert_eq!(parts[2]["mime_type"], "image/png");
+    assert_eq!(parts[2]["content"], "aGVsbG8=");
+    assert!(parts[2].get("data").is_none(), "raw 'data' must not leak");
+
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+    let out_parts = output[0]["parts"]
+        .as_array()
+        .expect("assistant parts array");
+    assert_eq!(out_parts[0]["type"], "uri");
+    assert_eq!(out_parts[0]["modality"], "image");
+    assert_eq!(out_parts[0]["uri"], "https://example.com/out.png");
+}
+
+#[tokio::test]
+async fn tracing_records_reasoning_blocks_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let response = ChatResponseBuilder::new()
+        .reasoning("unsigned thought")
+        .reasoning_with_signature("signed thought", "sig-abc")
+        .text("final answer")
+        .finish_reason(FinishReason::Stop)
+        .build();
+
+    let model = TracingChatProvider::new(MockProvider::with_response(response))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: false,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let _ = model
+        .chat(&ChatRequest::new("test-model").message(Message::user("think")))
+        .await
+        .unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+    let parts = output[0]["parts"]
+        .as_array()
+        .expect("assistant parts array");
+    assert_eq!(parts.len(), 3);
+
+    assert_eq!(parts[0]["type"], "reasoning");
+    assert_eq!(parts[0]["content"], "unsigned thought");
+    assert!(parts[0].get("signature").is_none());
+    assert!(
+        parts[0].get("text").is_none(),
+        "legacy reasoning 'text' key must not be emitted"
+    );
+
+    assert_eq!(parts[1]["type"], "reasoning");
+    assert_eq!(parts[1]["content"], "signed thought");
+    assert_eq!(parts[1]["signature"], "sig-abc");
+
+    assert_eq!(parts[2]["type"], "text");
+    assert_eq!(parts[2]["content"], "final answer");
+}
+
+#[tokio::test]
+async fn tracing_records_streamed_output_in_otel_semconv_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let provider = MockStreamingProvider::with_stream(vec![
+        MockStreamEvent::from(StreamEvent::ResponseStart {
+            id: Some("resp-stream".into()),
+            model: Some("stream-model".into()),
+        }),
+        MockStreamEvent::from(StreamEvent::BlockStart {
+            index: 0,
+            block_type: StreamBlockType::Text,
+            id: None,
+            name: None,
+            type_name: None,
+            data: None,
+        }),
+        MockStreamEvent::from(StreamEvent::TextDelta {
+            index: 0,
+            text: "streamed answer".into(),
+        }),
+        MockStreamEvent::from(StreamEvent::BlockStop { index: 0 }),
+        MockStreamEvent::from(StreamEvent::ResponseMetadata {
+            finish_reason: Some(FinishReason::Stop),
+            usage: Some(Usage::new().input_tokens(2).output_tokens(3)),
+            usage_mode: UsageMetadataMode::Snapshot,
+            id: None,
+            model: None,
+            metadata: serde_json::Map::new(),
+        }),
+        MockStreamEvent::from(StreamEvent::ResponseStop),
+    ]);
+
+    let model = TracingChatProvider::new(provider).with_content_capture(TracingContentConfig {
+        capture_input_messages: false,
+        capture_output_messages: true,
+        max_payload_chars: 4096,
+    });
+
+    let _ = model
+        .chat_stream(&ChatRequest::new("stream-model").message(Message::user("hi")))
+        .await
+        .unwrap()
+        .collect_response()
+        .await
+        .unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+
+    let assistant = &output[0];
+    assert_eq!(assistant["role"], "assistant");
+    assert_eq!(assistant["finish_reason"], "stop");
+
+    let parts = assistant["parts"].as_array().expect("parts is array");
+    assert_eq!(parts.len(), 1);
+    assert_eq!(parts[0]["type"], "text");
+    assert_eq!(parts[0]["content"], "streamed answer");
+    assert!(
+        parts[0].get("text").is_none(),
+        "streamed text part must use OTEL `content`, not legacy `text`"
+    );
+    assert!(
+        assistant.get("content").is_none(),
+        "streamed assistant message must not emit a legacy message-level `content` field"
+    );
+}
+
+#[tokio::test]
+async fn tracing_records_other_content_via_generic_part_passthrough() {
+    let (spans, _guard) = install_span_recorder();
+
+    let mut assistant_data = ExtraMap::new();
+    assistant_data.insert("citation_url".into(), "https://example.com".into());
+    assistant_data.insert("confidence".into(), serde_json::json!(0.9));
+    let assistant_response = ChatResponse::new(vec![ContentBlock::Other {
+        type_name: "citation".into(),
+        data: assistant_data,
+    }])
+    .finish_reason(FinishReason::Stop);
+
+    let model = TracingChatProvider::new(MockProvider::with_response(assistant_response))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let mut user_data = ExtraMap::new();
+    user_data.insert("format".into(), "wav".into());
+    user_data.insert("data".into(), "base64-audio".into());
+    let request = ChatRequest::new("test-model").message(Message::user(vec![ContentPart::Other {
+        type_name: "input_audio".into(),
+        data: user_data,
+    }]));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let input: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.input.messages")
+            .expect("missing input messages"),
+    )
+    .expect("input payload is JSON");
+    let user_part = &input[0]["parts"][0];
+    assert_eq!(
+        user_part["type"], "input_audio",
+        "type_name must win as the part `type`"
+    );
+    assert_eq!(
+        user_part["format"], "wav",
+        "unknown keys must pass through verbatim"
+    );
+    assert_eq!(
+        user_part["data"], "base64-audio",
+        "unknown keys must pass through verbatim"
+    );
+
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+    let assistant_part = &output[0]["parts"][0];
+    assert_eq!(assistant_part["type"], "citation");
+    assert_eq!(assistant_part["citation_url"], "https://example.com");
+    assert_eq!(assistant_part["confidence"], 0.9);
+}
+
+#[tokio::test]
+async fn tracing_records_message_extensions_under_anyllm_namespace() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+
+    let mut extensions = ExtraMap::new();
+    extensions.insert(
+        "cache_control".into(),
+        serde_json::json!({"type": "ephemeral"}),
+    );
+    let request = ChatRequest::new("test-model").message(Message::User {
+        content: anyllm::UserContent::Text("hi".into()),
+        name: None,
+        extensions: Some(extensions),
+    });
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let input: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.input.messages")
+            .expect("missing input messages"),
+    )
+    .expect("input payload is JSON");
+    let user = &input[0];
+    assert!(
+        user.get("extensions").is_none(),
+        "bare `extensions` key must not be emitted at the message root"
+    );
+    assert_eq!(
+        user["anyllm.extensions"]["cache_control"]["type"], "ephemeral",
+        "vendor extensions must be namespaced under `anyllm.extensions`"
+    );
 }

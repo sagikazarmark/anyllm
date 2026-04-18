@@ -298,7 +298,11 @@ impl ProviderBuilder {
                 chat_capabilities: self.chat_capabilities,
                 chat_capability_resolver: None,
                 embedding_capabilities: self.embedding_capabilities,
-                provider_name: self.provider_name.unwrap_or("openai_compat"),
+                // Default to "unknown" rather than a generic label: the real
+                // upstream (OpenAI, Groq, Cloudflare, etc.) is opaque to this
+                // crate, so presets or user-configured providers are the
+                // source of truth for `gen_ai.provider.name`.
+                provider_name: self.provider_name.unwrap_or("unknown"),
             }),
         })
     }
