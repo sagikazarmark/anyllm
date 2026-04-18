@@ -120,7 +120,6 @@ impl<T> TracingChatProvider<T> {
 pub fn otel_genai_provider_name(provider_name: &str) -> &str {
     match provider_name {
         "gemini" => "gcp.gemini",
-        "alt_openai_compat" => "openai",
         other => other,
     }
 }
@@ -831,7 +830,6 @@ mod tests {
         assert_eq!(otel_genai_provider_name("openai"), "openai");
         assert_eq!(otel_genai_provider_name("anthropic"), "anthropic");
         assert_eq!(otel_genai_provider_name("gemini"), "gcp.gemini");
-        assert_eq!(otel_genai_provider_name("alt_openai_compat"), "openai");
     }
 
     #[test]
@@ -844,5 +842,6 @@ mod tests {
             otel_genai_provider_name("cloudflare_worker"),
             "cloudflare_worker"
         );
+        assert_eq!(otel_genai_provider_name("unknown"), "unknown");
     }
 }
