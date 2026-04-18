@@ -1,10 +1,15 @@
 [package]
 name = "anyllm-examples"
 description = "Runnable examples and live tests for anyllm providers"
+publish = false
 version = { workspace = true }
 edition = { workspace = true }
 rust-version = { workspace = true }
-publish = false
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
 
 [dependencies]
 anyllm = { workspace = true, features = ["extract"] }
