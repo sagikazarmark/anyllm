@@ -168,7 +168,13 @@ fn merge_capability_support(
 fn record_fallback_activation(provider_name: &str, error: &Error) {
     let span = tracing::Span::current();
     span.record("anyllm.fallback.used", true);
-    span.record("anyllm.fallback.provider", provider_name);
+    // Map through the same OTEL GenAI provider-name table used for
+    // `gen_ai.provider.name` so dashboards can correlate fallback activations
+    // against the primary provider identity without per-provider aliasing.
+    span.record(
+        "anyllm.fallback.provider",
+        crate::otel_genai_provider_name(provider_name),
+    );
     span.record("anyllm.fallback.error_type", error.telemetry_type());
 }
 

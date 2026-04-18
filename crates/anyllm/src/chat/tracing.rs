@@ -602,14 +602,21 @@ fn otel_message(message: &Message) -> serde_json::Value {
         ),
         Message::Tool {
             tool_call_id,
+            name,
             content,
             is_error,
             extensions,
-            ..
         } => {
             let mut part = serde_json::Map::new();
             part.insert("type".into(), "tool_call_response".into());
             part.insert("id".into(), tool_call_id.clone().into());
+            // Tool name is carried by `Message::Tool` for providers like Gemini
+            // that correlate by name rather than id. OTEL GenAI semconv has no
+            // slot for it, so surface it under a crate-local key inside the
+            // `tool_call_response` part rather than dropping debug signal.
+            if !name.is_empty() {
+                part.insert("anyllm.tool_name".into(), name.clone().into());
+            }
             part.insert("response".into(), tool_result_response(content));
             if is_error.unwrap_or(false) {
                 part.insert("is_error".into(), true.into());
@@ -723,6 +730,12 @@ fn image_source_part(source: &ImageSource) -> serde_json::Value {
 }
 
 fn generic_part(type_name: &str, data: &crate::ExtraMap) -> serde_json::Value {
+    // Pass-through contract for `ContentPart::Other` / `ContentBlock::Other`:
+    // `type_name` wins over any `type` key in `data`, and every other entry is
+    // emitted verbatim alongside well-known part fields. Callers are
+    // responsible for avoiding collisions with OTEL-defined keys (`content`,
+    // `uri`, `mime_type`, `modality`, `tool_call_response`, ...) — if a
+    // collision happens the user-supplied value will shadow the spec field.
     let mut map = serde_json::Map::new();
     map.insert("type".into(), type_name.into());
     for (k, v) in data {

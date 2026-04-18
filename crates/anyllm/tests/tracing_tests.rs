@@ -888,6 +888,10 @@ async fn tracing_records_tool_result_message_in_otel_shape() {
     assert_eq!(parts[0]["type"], "tool_call_response");
     assert_eq!(parts[0]["id"], "call_1");
     assert_eq!(parts[0]["response"], "rainy, 57°F");
+    assert_eq!(
+        parts[0]["anyllm.tool_name"], "lookup",
+        "tool name must be preserved under the crate-local key"
+    );
 }
 
 #[tokio::test]
