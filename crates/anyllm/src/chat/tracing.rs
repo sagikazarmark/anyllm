@@ -11,7 +11,7 @@ use tracing::{Instrument, Span};
 use crate::{
     CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream,
     ContentBlock, ContentPart, Error, FinishReason, ImageSource, Message, ProviderIdentity,
-    ResponseFormat, Result, StreamCollector, StreamEvent, ToolResultContent, Usage,
+    ResponseFormat, Result, StreamCollector, StreamEvent, SystemPrompt, ToolResultContent, Usage,
     UsageMetadataMode, UserContent,
 };
 
@@ -433,6 +433,7 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
         "anyllm.fallback.provider" = tracing::field::Empty,
         "anyllm.fallback.error_type" = tracing::field::Empty,
         "anyllm.response.ttft_ms" = tracing::field::Empty,
+        "gen_ai.system_instructions" = tracing::field::Empty,
         "gen_ai.input.messages" = tracing::field::Empty,
         "gen_ai.output.messages" = tracing::field::Empty,
         "error.type" = tracing::field::Empty,
@@ -485,6 +486,13 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
     }
 
     if cfg.capture_input_messages {
+        if !request.system.is_empty() {
+            let instructions = otel_system_instructions(&request.system);
+            if let Some(payload) = serialize_redacted(&instructions, cfg.max_payload_chars) {
+                span.record("gen_ai.system_instructions", payload.as_str());
+            }
+        }
+
         let messages = otel_input_messages(&request.messages);
         if let Some(payload) = serialize_redacted(&messages, cfg.max_payload_chars) {
             span.record("gen_ai.input.messages", payload.as_str());
@@ -533,6 +541,19 @@ fn record_output_messages(span: &Span, response: &ChatResponse, cfg: &TracingCon
 /// object-typed `arguments`; tool results use `tool_call_response` parts.
 fn otel_input_messages(messages: &[Message]) -> serde_json::Value {
     serde_json::Value::Array(messages.iter().map(otel_message).collect())
+}
+
+/// Convert request-level system prompts into the OTEL GenAI
+/// `gen_ai.system_instructions` shape: a flat array of message parts, one text
+/// part per prompt. Typed per-prompt `SystemOptions` are intentionally not
+/// serialized (they are type-erased; see `SystemPrompt` serde notes).
+fn otel_system_instructions(system: &[SystemPrompt]) -> serde_json::Value {
+    serde_json::Value::Array(
+        system
+            .iter()
+            .map(|prompt| text_part(&prompt.content))
+            .collect(),
+    )
 }
 
 /// Convert a chat response into the OTEL GenAI `gen_ai.output.messages` shape.

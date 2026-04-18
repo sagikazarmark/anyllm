@@ -1,10 +1,11 @@
 #![cfg(all(feature = "tracing", feature = "mock"))]
 
 use anyllm::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponseBuilder,
-    ChatStreamExt, FallbackChatProvider, FinishReason, Message, MockProvider, MockStreamEvent,
-    MockStreamingProvider, ProviderIdentity, RetryPolicy, RetryingChatProvider, StreamBlockType,
-    StreamEvent, TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse,
+    ChatResponseBuilder, ChatStreamExt, ContentBlock, ContentPart, FallbackChatProvider,
+    FinishReason, ImageSource, Message, MockProvider, MockStreamEvent, MockStreamingProvider,
+    ProviderIdentity, RetryPolicy, RetryingChatProvider, StreamBlockType, StreamEvent,
+    TracingChatProvider, TracingContentConfig, Usage, UsageMetadataMode,
 };
 use futures_util::StreamExt;
 use std::collections::HashMap;
@@ -954,4 +955,195 @@ async fn tracing_records_messages_in_otel_semconv_shape() {
     assert!(args.is_object(), "tool_call arguments must be an object");
     assert_eq!(args["city"], "Paris");
     assert_eq!(args["api_key"], "[REDACTED]");
+}
+
+#[tokio::test]
+async fn tracing_records_system_instructions_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model")
+        .system("You are concise.")
+        .system("Answer in English.")
+        .message(Message::user("hi"));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let raw = chat_span
+        .fields
+        .get("gen_ai.system_instructions")
+        .expect("missing system instructions");
+    let value: serde_json::Value = serde_json::from_str(raw).expect("system payload is JSON");
+    let parts = value.as_array().expect("system instructions is array");
+    assert_eq!(parts.len(), 2);
+    assert_eq!(parts[0]["type"], "text");
+    assert_eq!(parts[0]["content"], "You are concise.");
+    assert_eq!(parts[1]["content"], "Answer in English.");
+}
+
+#[tokio::test]
+async fn tracing_omits_system_instructions_when_capture_disabled_or_empty() {
+    let (spans, _guard) = install_span_recorder();
+
+    let captured =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+    let _ = captured
+        .chat(&ChatRequest::new("test-model").message(Message::user("hi")))
+        .await
+        .unwrap();
+
+    let uncaptured =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: false,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+    let _ = uncaptured
+        .chat(
+            &ChatRequest::new("test-model")
+                .system("Be concise.")
+                .message(Message::user("hi")),
+        )
+        .await
+        .unwrap();
+
+    for span in spans.lock().unwrap().iter().filter(|s| s.name == "chat") {
+        assert!(
+            !span.fields.contains_key("gen_ai.system_instructions"),
+            "system instructions must not be recorded when empty or when capture is disabled"
+        );
+    }
+}
+
+#[tokio::test]
+async fn tracing_records_image_parts_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let assistant_image = ChatResponse::new(vec![ContentBlock::Image {
+        source: ImageSource::Url {
+            url: "https://example.com/out.png".into(),
+        },
+    }])
+    .finish_reason(FinishReason::Stop);
+
+    let model = TracingChatProvider::new(MockProvider::with_response(assistant_image))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model").message(Message::user(vec![
+        ContentPart::text("describe these"),
+        ContentPart::Image {
+            source: ImageSource::Url {
+                url: "https://example.com/in.png".into(),
+            },
+            detail: Some("high".into()),
+        },
+        ContentPart::image_base64("image/png", "aGVsbG8="),
+    ]));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let input: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.input.messages")
+            .expect("missing input messages"),
+    )
+    .expect("input payload is JSON");
+    let parts = input[0]["parts"].as_array().expect("user parts array");
+    assert_eq!(parts.len(), 3);
+
+    assert_eq!(parts[1]["type"], "uri");
+    assert_eq!(parts[1]["modality"], "image");
+    assert_eq!(parts[1]["uri"], "https://example.com/in.png");
+    assert_eq!(parts[1]["detail"], "high");
+    assert!(parts[1].get("url").is_none(), "raw 'url' must not leak");
+
+    assert_eq!(parts[2]["type"], "blob");
+    assert_eq!(parts[2]["modality"], "image");
+    assert_eq!(parts[2]["mime_type"], "image/png");
+    assert_eq!(parts[2]["content"], "aGVsbG8=");
+    assert!(parts[2].get("data").is_none(), "raw 'data' must not leak");
+
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+    let out_parts = output[0]["parts"]
+        .as_array()
+        .expect("assistant parts array");
+    assert_eq!(out_parts[0]["type"], "uri");
+    assert_eq!(out_parts[0]["modality"], "image");
+    assert_eq!(out_parts[0]["uri"], "https://example.com/out.png");
+}
+
+#[tokio::test]
+async fn tracing_records_reasoning_blocks_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let response = ChatResponseBuilder::new()
+        .reasoning("unsigned thought")
+        .reasoning_with_signature("signed thought", "sig-abc")
+        .text("final answer")
+        .finish_reason(FinishReason::Stop)
+        .build();
+
+    let model = TracingChatProvider::new(MockProvider::with_response(response))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: false,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let _ = model
+        .chat(&ChatRequest::new("test-model").message(Message::user("think")))
+        .await
+        .unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+    let parts = output[0]["parts"]
+        .as_array()
+        .expect("assistant parts array");
+    assert_eq!(parts.len(), 3);
+
+    assert_eq!(parts[0]["type"], "reasoning");
+    assert_eq!(parts[0]["content"], "unsigned thought");
+    assert!(parts[0].get("signature").is_none());
+    assert!(
+        parts[0].get("text").is_none(),
+        "legacy reasoning 'text' key must not be emitted"
+    );
+
+    assert_eq!(parts[1]["type"], "reasoning");
+    assert_eq!(parts[1]["content"], "signed thought");
+    assert_eq!(parts[1]["signature"], "sig-abc");
+
+    assert_eq!(parts[2]["type"], "text");
+    assert_eq!(parts[2]["content"], "final answer");
 }
