@@ -8,6 +8,12 @@ Cloudflare Workers AI provider adapter for `anyllm`.
 - you want to call Workers AI through the shared `anyllm::ChatProvider` trait
 - you want native binding-based execution instead of issuing outbound HTTP calls
 
+## Identity
+
+`Provider::provider_name()` returns `"cloudflare"` so OTEL `gen_ai.provider.name`
+matches the value emitted by `anyllm-openai-compat`'s Cloudflare preset,
+regardless of which transport you choose.
+
 ## Capabilities
 
 `anyllm-cloudflare-worker` currently reports:

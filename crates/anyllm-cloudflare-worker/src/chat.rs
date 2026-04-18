@@ -12,12 +12,16 @@ use crate::error::map_worker_error;
 use crate::streaming::byte_stream_to_chat_stream;
 use crate::wire;
 
+/// The `gen_ai.provider.name` value reported by this provider.
+///
+/// Matches the identity reported by `anyllm-openai-compat`'s Cloudflare preset
+/// so dashboards keyed on `gen_ai.provider.name` see a single value regardless
+/// of which transport the user picked.
+pub(crate) const PROVIDER_NAME: &str = "cloudflare";
+
 impl ProviderIdentity for Provider {
     fn provider_name(&self) -> &'static str {
-        // Matches the identity reported by `anyllm-openai-compat`'s Cloudflare
-        // preset so dashboards keyed on `gen_ai.provider.name` see a single
-        // value regardless of which transport the user picked.
-        "cloudflare"
+        PROVIDER_NAME
     }
 }
 
@@ -66,3 +70,16 @@ impl ChatProvider for Provider {
 
 #[cfg(feature = "extract")]
 impl ExtractExt for Provider {}
+
+#[cfg(test)]
+mod tests {
+    use super::PROVIDER_NAME;
+
+    #[test]
+    fn provider_identity_is_cloudflare() {
+        // The wire identity is part of the public contract: dashboards and
+        // OTEL backends keyed on `gen_ai.provider.name` break if it shifts.
+        // Lock it down so a refactor cannot quietly rename it.
+        assert_eq!(PROVIDER_NAME, "cloudflare");
+    }
+}

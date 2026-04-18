@@ -1147,3 +1147,77 @@ async fn tracing_records_reasoning_blocks_in_otel_shape() {
     assert_eq!(parts[2]["type"], "text");
     assert_eq!(parts[2]["content"], "final answer");
 }
+
+#[tokio::test]
+async fn tracing_records_streamed_output_in_otel_semconv_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let provider = MockStreamingProvider::with_stream(vec![
+        MockStreamEvent::from(StreamEvent::ResponseStart {
+            id: Some("resp-stream".into()),
+            model: Some("stream-model".into()),
+        }),
+        MockStreamEvent::from(StreamEvent::BlockStart {
+            index: 0,
+            block_type: StreamBlockType::Text,
+            id: None,
+            name: None,
+            type_name: None,
+            data: None,
+        }),
+        MockStreamEvent::from(StreamEvent::TextDelta {
+            index: 0,
+            text: "streamed answer".into(),
+        }),
+        MockStreamEvent::from(StreamEvent::BlockStop { index: 0 }),
+        MockStreamEvent::from(StreamEvent::ResponseMetadata {
+            finish_reason: Some(FinishReason::Stop),
+            usage: Some(Usage::new().input_tokens(2).output_tokens(3)),
+            usage_mode: UsageMetadataMode::Snapshot,
+            id: None,
+            model: None,
+            metadata: serde_json::Map::new(),
+        }),
+        MockStreamEvent::from(StreamEvent::ResponseStop),
+    ]);
+
+    let model = TracingChatProvider::new(provider).with_content_capture(TracingContentConfig {
+        capture_input_messages: false,
+        capture_output_messages: true,
+        max_payload_chars: 4096,
+    });
+
+    let _ = model
+        .chat_stream(&ChatRequest::new("stream-model").message(Message::user("hi")))
+        .await
+        .unwrap()
+        .collect_response()
+        .await
+        .unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let output: serde_json::Value = serde_json::from_str(
+        chat_span
+            .fields
+            .get("gen_ai.output.messages")
+            .expect("missing output messages"),
+    )
+    .expect("output payload is JSON");
+
+    let assistant = &output[0];
+    assert_eq!(assistant["role"], "assistant");
+    assert_eq!(assistant["finish_reason"], "stop");
+
+    let parts = assistant["parts"].as_array().expect("parts is array");
+    assert_eq!(parts.len(), 1);
+    assert_eq!(parts[0]["type"], "text");
+    assert_eq!(parts[0]["content"], "streamed answer");
+    assert!(
+        parts[0].get("text").is_none(),
+        "streamed text part must use OTEL `content`, not legacy `text`"
+    );
+    assert!(
+        assistant.get("content").is_none(),
+        "streamed assistant message must not emit a legacy message-level `content` field"
+    );
+}
