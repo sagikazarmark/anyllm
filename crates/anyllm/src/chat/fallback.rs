@@ -167,9 +167,9 @@ fn merge_capability_support(
 #[cfg(feature = "tracing")]
 fn record_fallback_activation(provider_name: &str, error: &Error) {
     let span = tracing::Span::current();
-    span.record("gen_ai.fallback.used", true);
-    span.record("gen_ai.fallback.provider", provider_name);
-    span.record("gen_ai.fallback.error_type", error.telemetry_type());
+    span.record("anyllm.fallback.used", true);
+    span.record("anyllm.fallback.provider", provider_name);
+    span.record("anyllm.fallback.error_type", error.telemetry_type());
 }
 
 #[cfg(test)]

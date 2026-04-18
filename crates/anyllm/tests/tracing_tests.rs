@@ -344,28 +344,28 @@ async fn tracing_records_retry_attributes() {
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.max_attempts")
+            .get("anyllm.retry.max_attempts")
             .map(String::as_str),
         Some("2")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.used")
+            .get("anyllm.retry.used")
             .map(String::as_str),
         Some("true")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.attempts")
+            .get("anyllm.retry.attempts")
             .map(String::as_str),
         Some("2")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.retry.last_error_type")
+            .get("anyllm.retry.last_error_type")
             .map(String::as_str),
         Some("timeout")
     );
@@ -401,21 +401,21 @@ async fn tracing_records_fallback_attributes() {
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.fallback.used")
+            .get("anyllm.fallback.used")
             .map(String::as_str),
         Some("true")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.fallback.provider")
+            .get("anyllm.fallback.provider")
             .map(String::as_str),
         Some("fallback_provider")
     );
     assert_eq!(
         chat_span
             .fields
-            .get("gen_ai.fallback.error_type")
+            .get("anyllm.fallback.error_type")
             .map(String::as_str),
         Some("overloaded")
     );
@@ -834,4 +834,124 @@ async fn tracing_chat_provider_records_stream_ttft_and_partial_output_capture() 
         .expect("missing output messages");
     assert!(output.contains("\"finish_reason\":\"stop\""));
     assert!(output.contains("\"hello\""));
+}
+
+#[tokio::test]
+async fn tracing_sets_otel_name_override_for_span() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model = TracingChatProvider::new(standard_provider());
+    let _ = model
+        .chat(&ChatRequest::new("gpt-4o-mini").message(Message::user("hi")))
+        .await
+        .unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    assert_eq!(
+        chat_span.fields.get("otel.name").map(String::as_str),
+        Some("chat gpt-4o-mini"),
+        "tracing-opentelemetry bridge needs otel.name to produce the spec-shaped span name"
+    );
+}
+
+#[tokio::test]
+async fn tracing_records_tool_result_message_in_otel_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let model =
+        TracingChatProvider::new(standard_provider()).with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: false,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model")
+        .message(Message::user("use the tool"))
+        .message(Message::tool_result("call_1", "lookup", "rainy, 57°F"));
+
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+    let input_raw = chat_span
+        .fields
+        .get("gen_ai.input.messages")
+        .expect("missing input messages");
+    let input: serde_json::Value = serde_json::from_str(input_raw).expect("input payload is JSON");
+    let messages = input.as_array().expect("input is array");
+    assert_eq!(messages.len(), 2);
+
+    let tool_msg = &messages[1];
+    assert_eq!(tool_msg["role"], "tool");
+    let parts = tool_msg["parts"].as_array().expect("parts is array");
+    assert_eq!(parts.len(), 1);
+    assert_eq!(parts[0]["type"], "tool_call_response");
+    assert_eq!(parts[0]["id"], "call_1");
+    assert_eq!(parts[0]["response"], "rainy, 57°F");
+}
+
+#[tokio::test]
+async fn tracing_records_messages_in_otel_semconv_shape() {
+    let (spans, _guard) = install_span_recorder();
+
+    let tool_call_response = ChatResponseBuilder::new()
+        .tool_call(
+            "call_1",
+            "lookup",
+            serde_json::json!({"city": "Paris", "api_key": "top-secret"}),
+        )
+        .finish_reason(FinishReason::ToolCalls)
+        .build();
+
+    let model = TracingChatProvider::new(MockProvider::with_response(tool_call_response))
+        .with_content_capture(TracingContentConfig {
+            capture_input_messages: true,
+            capture_output_messages: true,
+            max_payload_chars: 4096,
+        });
+
+    let request = ChatRequest::new("test-model").message(Message::user("Weather in Paris?"));
+    let _ = model.chat(&request).await.unwrap();
+
+    let chat_span = find_chat_span(&spans);
+
+    let input_raw = chat_span
+        .fields
+        .get("gen_ai.input.messages")
+        .expect("missing input messages");
+    let input: serde_json::Value = serde_json::from_str(input_raw).expect("input payload is JSON");
+    let input_arr = input.as_array().expect("input is array");
+    assert_eq!(input_arr.len(), 1);
+    let user = &input_arr[0];
+    assert_eq!(user["role"], "user");
+    let parts = user["parts"].as_array().expect("parts is array");
+    assert_eq!(parts.len(), 1);
+    assert_eq!(parts[0]["type"], "text");
+    assert_eq!(parts[0]["content"], "Weather in Paris?");
+    assert!(
+        parts[0].get("text").is_none(),
+        "legacy 'text' field must not be emitted"
+    );
+    assert!(
+        user.get("content").is_none(),
+        "legacy message-level 'content' field must not be emitted"
+    );
+
+    let output_raw = chat_span
+        .fields
+        .get("gen_ai.output.messages")
+        .expect("missing output messages");
+    let output: serde_json::Value =
+        serde_json::from_str(output_raw).expect("output payload is JSON");
+    let assistant = &output[0];
+    assert_eq!(assistant["role"], "assistant");
+    assert_eq!(assistant["finish_reason"], "tool_calls");
+    let parts = assistant["parts"].as_array().expect("parts is array");
+    assert_eq!(parts[0]["type"], "tool_call");
+    assert_eq!(parts[0]["id"], "call_1");
+    assert_eq!(parts[0]["name"], "lookup");
+
+    let args = &parts[0]["arguments"];
+    assert!(args.is_object(), "tool_call arguments must be an object");
+    assert_eq!(args["city"], "Paris");
+    assert_eq!(args["api_key"], "[REDACTED]");
 }

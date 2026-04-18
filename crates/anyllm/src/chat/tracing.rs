@@ -9,9 +9,10 @@ use serde::Serialize;
 use tracing::{Instrument, Span};
 
 use crate::{
-    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream, Error,
-    FinishReason, ProviderIdentity, ResponseFormat, Result, StreamCollector, StreamEvent, Usage,
-    UsageMetadataMode,
+    CapabilitySupport, ChatCapability, ChatProvider, ChatRequest, ChatResponse, ChatStream,
+    ContentBlock, ContentPart, Error, FinishReason, ImageSource, Message, ProviderIdentity,
+    ResponseFormat, Result, StreamCollector, StreamEvent, ToolResultContent, Usage,
+    UsageMetadataMode, UserContent,
 };
 
 /// A wrapper around any [`ChatProvider`] that emits `tracing` spans with
@@ -111,12 +112,15 @@ impl<T> TracingChatProvider<T> {
 
 /// Maps internal provider names onto OTEL GenAI provider semantic-convention
 /// values where the spec defines a standard name.
+///
+/// Only returns remapped values that appear in the OTEL GenAI registry's
+/// well-known `gen_ai.provider.name` list. Unknown providers pass through
+/// unchanged, which the spec allows.
 #[must_use]
 pub fn otel_genai_provider_name(provider_name: &str) -> &str {
     match provider_name {
         "gemini" => "gcp.gemini",
         "alt_openai_compat" => "openai",
-        "cloudflare-worker" | "cloudflare_worker" => "cloudflare",
         other => other,
     }
 }
@@ -395,6 +399,10 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
     let provider_name = otel_genai_provider_name(provider_name);
     let span = tracing::info_span!(
         "chat",
+        // `tracing` requires a static span name, but OTEL GenAI spec asks for
+        // `{operation} {model}`. The `tracing-opentelemetry` bridge recognizes
+        // `otel.name` as an override for the exported span name.
+        "otel.name" = %format_args!("chat {}", request.model),
         "gen_ai.operation.name" = "chat",
         "gen_ai.provider.name" = provider_name,
         "gen_ai.request.model" = %request.model,
@@ -413,17 +421,17 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
         "gen_ai.response.finish_reasons" = tracing::field::Empty,
         "gen_ai.response.id" = tracing::field::Empty,
         "gen_ai.response.model" = tracing::field::Empty,
-        "gen_ai.retry.max_attempts" = tracing::field::Empty,
-        "gen_ai.retry.attempts" = tracing::field::Empty,
-        "gen_ai.retry.used" = tracing::field::Empty,
-        "gen_ai.retry.last_delay_ms" = tracing::field::Empty,
-        "gen_ai.retry.last_error_type" = tracing::field::Empty,
-        "gen_ai.fallback.used" = tracing::field::Empty,
-        "gen_ai.fallback.provider" = tracing::field::Empty,
-        "gen_ai.fallback.error_type" = tracing::field::Empty,
-        // OTEL GenAI currently defines TTFT as a metric concept, not a span
-        // attribute, so keep the additional timing signal in a crate-local
-        // namespace instead of minting a fake gen_ai.* semantic-convention key.
+        // Retry, fallback, and TTFT attributes are not defined in the OTEL
+        // GenAI semantic conventions, so keep them in a crate-local namespace
+        // rather than minting fake gen_ai.* keys.
+        "anyllm.retry.max_attempts" = tracing::field::Empty,
+        "anyllm.retry.attempts" = tracing::field::Empty,
+        "anyllm.retry.used" = tracing::field::Empty,
+        "anyllm.retry.last_delay_ms" = tracing::field::Empty,
+        "anyllm.retry.last_error_type" = tracing::field::Empty,
+        "anyllm.fallback.used" = tracing::field::Empty,
+        "anyllm.fallback.provider" = tracing::field::Empty,
+        "anyllm.fallback.error_type" = tracing::field::Empty,
         "anyllm.response.ttft_ms" = tracing::field::Empty,
         "gen_ai.input.messages" = tracing::field::Empty,
         "gen_ai.output.messages" = tracing::field::Empty,
@@ -476,10 +484,11 @@ fn make_chat_span(provider_name: &str, request: &ChatRequest, cfg: &TracingConte
         }
     }
 
-    if cfg.capture_input_messages
-        && let Some(payload) = serialize_redacted(&request.messages, cfg.max_payload_chars)
-    {
-        span.record("gen_ai.input.messages", payload.as_str());
+    if cfg.capture_input_messages {
+        let messages = otel_input_messages(&request.messages);
+        if let Some(payload) = serialize_redacted(&messages, cfg.max_payload_chars) {
+            span.record("gen_ai.input.messages", payload.as_str());
+        }
     }
 
     span
@@ -511,13 +520,206 @@ fn record_output_messages(span: &Span, response: &ChatResponse, cfg: &TracingCon
         return;
     }
 
-    let output = serde_json::json!([{
-        "role": "assistant",
-        "parts": &response.content,
-        "finish_reason": response.finish_reason.as_ref().map(FinishReason::as_str),
-    }]);
+    let output = otel_output_messages(response);
     if let Some(payload) = serialize_redacted(&output, cfg.max_payload_chars) {
         span.record("gen_ai.output.messages", payload.as_str());
+    }
+}
+
+/// Convert request messages into the OTEL GenAI `gen_ai.input.messages` shape.
+///
+/// Follows `gen-ai-input-messages.json` from the OTEL semantic conventions:
+/// messages carry `role` + `parts[]`; text parts use `content`; tool calls use
+/// object-typed `arguments`; tool results use `tool_call_response` parts.
+fn otel_input_messages(messages: &[Message]) -> serde_json::Value {
+    serde_json::Value::Array(messages.iter().map(otel_message).collect())
+}
+
+/// Convert a chat response into the OTEL GenAI `gen_ai.output.messages` shape.
+///
+/// The response is emitted as a single-element array because anyllm does not
+/// currently expose multi-candidate (`choice.count > 1`) responses.
+fn otel_output_messages(response: &ChatResponse) -> serde_json::Value {
+    let mut message = serde_json::Map::new();
+    message.insert("role".into(), "assistant".into());
+    message.insert(
+        "parts".into(),
+        serde_json::Value::Array(
+            response
+                .content
+                .iter()
+                .map(otel_part_from_content_block)
+                .collect(),
+        ),
+    );
+    if let Some(reason) = response.finish_reason.as_ref() {
+        message.insert("finish_reason".into(), reason.as_str().into());
+    }
+    serde_json::Value::Array(vec![serde_json::Value::Object(message)])
+}
+
+fn otel_message(message: &Message) -> serde_json::Value {
+    match message {
+        Message::User {
+            content,
+            name,
+            extensions,
+        } => build_message(
+            "user",
+            otel_parts_from_user_content(content),
+            name.as_deref(),
+            extensions.as_ref(),
+        ),
+        Message::Assistant {
+            content,
+            name,
+            extensions,
+        } => build_message(
+            "assistant",
+            content.iter().map(otel_part_from_content_block).collect(),
+            name.as_deref(),
+            extensions.as_ref(),
+        ),
+        Message::Tool {
+            tool_call_id,
+            content,
+            is_error,
+            extensions,
+            ..
+        } => {
+            let mut part = serde_json::Map::new();
+            part.insert("type".into(), "tool_call_response".into());
+            part.insert("id".into(), tool_call_id.clone().into());
+            part.insert("response".into(), tool_result_response(content));
+            if is_error.unwrap_or(false) {
+                part.insert("is_error".into(), true.into());
+            }
+            build_message(
+                "tool",
+                vec![serde_json::Value::Object(part)],
+                None,
+                extensions.as_ref(),
+            )
+        }
+    }
+}
+
+fn build_message(
+    role: &str,
+    parts: Vec<serde_json::Value>,
+    name: Option<&str>,
+    extensions: Option<&crate::ExtraMap>,
+) -> serde_json::Value {
+    let mut map = serde_json::Map::new();
+    map.insert("role".into(), role.into());
+    map.insert("parts".into(), serde_json::Value::Array(parts));
+    if let Some(name) = name {
+        map.insert("name".into(), name.into());
+    }
+    if let Some(extensions) = extensions
+        && !extensions.is_empty()
+    {
+        // ChatMessage permits additionalProperties; pass extensions through as a
+        // sibling object so provider-specific metadata is still available for
+        // debugging (with redaction applied before recording).
+        map.insert(
+            "extensions".into(),
+            serde_json::Value::Object(extensions.clone()),
+        );
+    }
+    serde_json::Value::Object(map)
+}
+
+fn otel_parts_from_user_content(content: &UserContent) -> Vec<serde_json::Value> {
+    match content {
+        UserContent::Text(text) => vec![text_part(text)],
+        UserContent::Parts(parts) => parts.iter().map(otel_part_from_content_part).collect(),
+    }
+}
+
+fn otel_part_from_content_part(part: &ContentPart) -> serde_json::Value {
+    match part {
+        ContentPart::Text { text } => text_part(text),
+        ContentPart::Image { source, detail } => {
+            let mut part = image_source_part(source);
+            if let (Some(detail), serde_json::Value::Object(map)) = (detail, &mut part) {
+                map.insert("detail".into(), detail.clone().into());
+            }
+            part
+        }
+        ContentPart::Other { type_name, data } => generic_part(type_name, data),
+    }
+}
+
+fn otel_part_from_content_block(block: &ContentBlock) -> serde_json::Value {
+    match block {
+        ContentBlock::Text { text } => text_part(text),
+        ContentBlock::Image { source } => image_source_part(source),
+        ContentBlock::ToolCall {
+            id,
+            name,
+            arguments,
+        } => {
+            let args = serde_json::from_str::<serde_json::Value>(arguments)
+                .unwrap_or_else(|_| serde_json::Value::String(arguments.clone()));
+            serde_json::json!({
+                "type": "tool_call",
+                "id": id,
+                "name": name,
+                "arguments": args,
+            })
+        }
+        ContentBlock::Reasoning { text, signature } => {
+            let mut map = serde_json::Map::new();
+            map.insert("type".into(), "reasoning".into());
+            map.insert("content".into(), text.clone().into());
+            if let Some(signature) = signature {
+                map.insert("signature".into(), signature.clone().into());
+            }
+            serde_json::Value::Object(map)
+        }
+        ContentBlock::Other { type_name, data } => generic_part(type_name, data),
+    }
+}
+
+fn text_part(text: &str) -> serde_json::Value {
+    serde_json::json!({"type": "text", "content": text})
+}
+
+fn image_source_part(source: &ImageSource) -> serde_json::Value {
+    match source {
+        ImageSource::Url { url } => serde_json::json!({
+            "type": "uri",
+            "modality": "image",
+            "uri": url,
+        }),
+        ImageSource::Base64 { media_type, data } => serde_json::json!({
+            "type": "blob",
+            "modality": "image",
+            "mime_type": media_type,
+            "content": data,
+        }),
+    }
+}
+
+fn generic_part(type_name: &str, data: &crate::ExtraMap) -> serde_json::Value {
+    let mut map = serde_json::Map::new();
+    map.insert("type".into(), type_name.into());
+    for (k, v) in data {
+        if k == "type" {
+            continue;
+        }
+        map.insert(k.clone(), v.clone());
+    }
+    serde_json::Value::Object(map)
+}
+
+fn tool_result_response(content: &ToolResultContent) -> serde_json::Value {
+    match content {
+        ToolResultContent::Text(text) => serde_json::Value::String(text.clone()),
+        ToolResultContent::Parts(parts) => {
+            serde_json::Value::Array(parts.iter().map(otel_part_from_content_part).collect())
+        }
     }
 }
 
@@ -609,7 +811,6 @@ mod tests {
         assert_eq!(otel_genai_provider_name("anthropic"), "anthropic");
         assert_eq!(otel_genai_provider_name("gemini"), "gcp.gemini");
         assert_eq!(otel_genai_provider_name("alt_openai_compat"), "openai");
-        assert_eq!(otel_genai_provider_name("cloudflare_worker"), "cloudflare");
     }
 
     #[test]
@@ -617,6 +818,10 @@ mod tests {
         assert_eq!(
             otel_genai_provider_name("custom_provider"),
             "custom_provider"
+        );
+        assert_eq!(
+            otel_genai_provider_name("cloudflare_worker"),
+            "cloudflare_worker"
         );
     }
 }

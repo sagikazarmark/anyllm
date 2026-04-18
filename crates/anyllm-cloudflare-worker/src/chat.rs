@@ -14,7 +14,10 @@ use crate::wire;
 
 impl ProviderIdentity for Provider {
     fn provider_name(&self) -> &'static str {
-        "cloudflare-worker"
+        // Matches the identity reported by `anyllm-openai-compat`'s Cloudflare
+        // preset so dashboards keyed on `gen_ai.provider.name` see a single
+        // value regardless of which transport the user picked.
+        "cloudflare"
     }
 }
 
