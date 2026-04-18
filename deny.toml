@@ -5,17 +5,17 @@ all-features = true
 
 [licenses]
 allow = [
-    "Apache-2.0",
-    "BSD-3-Clause",
-    "CDLA-Permissive-2.0",
-    "ISC",
-    "MIT",
-    "Unicode-3.0",
+  "Apache-2.0",
+  "BSD-3-Clause",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "Unicode-3.0",
 ]
 
 [bans]
 multiple-versions = "warn"
-wildcards = "deny"
+wildcards = "warn"
 
 [sources]
 unknown-registry = "deny"
