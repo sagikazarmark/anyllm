@@ -146,6 +146,10 @@ impl Error {
     ///
     /// Covers: `RateLimited`, `Overloaded`, `Timeout`, provider failures with no
     /// HTTP status, and provider failures with 5xx status codes.
+    ///
+    /// Use [`is_transient`](Self::is_transient) when you need a stricter
+    /// predicate that only reports canonically-transient categories and
+    /// excludes best-effort signals such as unspecified provider failures.
     #[must_use]
     pub fn is_retryable(&self) -> bool {
         match self {
@@ -157,6 +161,44 @@ impl Error {
             #[cfg(feature = "extract")]
             Error::Extract(_) => false,
             Error::Fallback { fallback, .. } => fallback.is_retryable(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` when the error is canonically transient: a timeout, a
+    /// rate-limit response, or an overloaded/unavailable signal.
+    ///
+    /// This is stricter than [`is_retryable`](Self::is_retryable): it excludes
+    /// [`Error::Provider`] variants that are only probably-transient (such as
+    /// 5xx statuses and transport-level failures with no HTTP status). Use
+    /// this predicate when the caller wants high-confidence transient
+    /// detection (for example, to distinguish provider-side backpressure from
+    /// genuine service errors in telemetry).
+    ///
+    /// For [`Error::Fallback`], delegates to the fallback error, consistent
+    /// with [`is_retryable`](Self::is_retryable).
+    #[must_use]
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Error::Timeout(_) | Error::RateLimited { .. } | Error::Overloaded { .. } => true,
+            Error::Fallback { fallback, .. } => fallback.is_transient(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` when the error is an authentication or authorization
+    /// failure (`Error::Auth`).
+    ///
+    /// For [`Error::Fallback`], delegates to the fallback error, consistent
+    /// with [`is_retryable`](Self::is_retryable) and
+    /// [`is_transient`](Self::is_transient). Useful for credential-rotation
+    /// or escalation policies that want a dedicated branch for auth failures
+    /// without matching on the full enum.
+    #[must_use]
+    pub fn is_auth(&self) -> bool {
+        match self {
+            Error::Auth(_) => true,
+            Error::Fallback { fallback, .. } => fallback.is_auth(),
             _ => false,
         }
     }
@@ -912,6 +954,102 @@ mod tests {
         assert_eq!(log["type"], "context_length_exceeded");
         assert_eq!(log["message"], "input too long");
         assert_eq!(log["max_tokens"], 128_000);
+    }
+
+    #[test]
+    fn is_transient_covers_only_canonical_transient_variants() {
+        assert!(Error::Timeout("slow".into()).is_transient());
+        assert!(
+            Error::RateLimited {
+                message: "too many".into(),
+                retry_after: None,
+                request_id: None,
+            }
+            .is_transient()
+        );
+        assert!(
+            Error::Overloaded {
+                message: "busy".into(),
+                retry_after: None,
+                request_id: None,
+            }
+            .is_transient()
+        );
+
+        // Provider errors are not canonically transient, even if retryable.
+        let provider_500 = Error::Provider {
+            status: Some(500),
+            message: "server error".into(),
+            body: None,
+            request_id: None,
+        };
+        assert!(provider_500.is_retryable());
+        assert!(!provider_500.is_transient());
+
+        let provider_no_status = Error::Provider {
+            status: None,
+            message: "connection reset".into(),
+            body: None,
+            request_id: None,
+        };
+        assert!(provider_no_status.is_retryable());
+        assert!(!provider_no_status.is_transient());
+
+        assert!(!Error::Auth("bad key".into()).is_transient());
+        assert!(!Error::InvalidRequest("shape".into()).is_transient());
+    }
+
+    #[test]
+    fn is_transient_delegates_through_fallback() {
+        let transient_fallback = Error::Fallback {
+            primary: Box::new(Error::Auth("primary".into())),
+            fallback: Box::new(Error::Timeout("fallback timed out".into())),
+        };
+        assert!(transient_fallback.is_transient());
+
+        let non_transient_fallback = Error::Fallback {
+            primary: Box::new(Error::Timeout("primary".into())),
+            fallback: Box::new(Error::Auth("fallback".into())),
+        };
+        assert!(!non_transient_fallback.is_transient());
+    }
+
+    #[test]
+    fn is_auth_matches_auth_variant_only() {
+        assert!(Error::Auth("invalid".into()).is_auth());
+        assert!(!Error::Timeout("slow".into()).is_auth());
+        assert!(
+            !Error::RateLimited {
+                message: "rate".into(),
+                retry_after: None,
+                request_id: None,
+            }
+            .is_auth()
+        );
+        assert!(
+            !Error::Provider {
+                status: Some(401),
+                message: "unauthorized".into(),
+                body: None,
+                request_id: None,
+            }
+            .is_auth()
+        );
+    }
+
+    #[test]
+    fn is_auth_delegates_through_fallback() {
+        let auth_fallback = Error::Fallback {
+            primary: Box::new(Error::Timeout("primary".into())),
+            fallback: Box::new(Error::Auth("fallback".into())),
+        };
+        assert!(auth_fallback.is_auth());
+
+        let non_auth_fallback = Error::Fallback {
+            primary: Box::new(Error::Auth("primary".into())),
+            fallback: Box::new(Error::Timeout("fallback".into())),
+        };
+        assert!(!non_auth_fallback.is_auth());
     }
 
     #[cfg(feature = "extract")]

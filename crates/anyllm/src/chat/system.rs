@@ -163,6 +163,27 @@ impl SystemOptions {
         self.inner.contains_key(&TypeId::of::<T>())
     }
 
+    /// Borrow a typed option, inserting a default value produced by `f` when
+    /// none is present.
+    ///
+    /// Mirrors [`RequestOptions::get_or_insert_with`](crate::RequestOptions::get_or_insert_with).
+    /// The returned reference is always valid: if no value of type `T` was
+    /// stored, `f` is invoked, its result is inserted, and a mutable borrow
+    /// of the stored value is returned. Otherwise the existing value is
+    /// borrowed in place without invoking `f`.
+    pub fn get_or_insert_with<T, F>(&mut self, f: F) -> &mut T
+    where
+        T: Clone + Send + Sync + 'static,
+        F: FnOnce() -> T,
+    {
+        self.inner
+            .entry(TypeId::of::<T>())
+            .or_insert_with(|| ErasedValue::new(f()))
+            .as_any_mut()
+            .downcast_mut::<T>()
+            .expect("type id matches inserted value type")
+    }
+
     /// Returns whether the bag is empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -285,6 +306,34 @@ mod tests {
         opts.insert(Flag(true));
         assert!(!opts.is_empty());
         assert!(opts.contains::<Flag>());
+    }
+
+    #[test]
+    fn system_options_get_or_insert_with_inserts_when_missing() {
+        let mut opts = SystemOptions::new();
+        let value: &mut Count = opts.get_or_insert_with(|| Count(3));
+        assert_eq!(value, &mut Count(3));
+
+        value.0 = 5;
+
+        assert_eq!(opts.get::<Count>(), Some(&Count(5)));
+        assert_eq!(opts.len(), 1);
+    }
+
+    #[test]
+    fn system_options_get_or_insert_with_does_not_invoke_when_present() {
+        let mut opts = SystemOptions::new();
+        opts.insert(Count(11));
+
+        let mut invoked = false;
+        let value: &mut Count = opts.get_or_insert_with(|| {
+            invoked = true;
+            Count(99)
+        });
+
+        assert!(!invoked, "factory should not run when value is present");
+        assert_eq!(value, &mut Count(11));
+        assert_eq!(opts.len(), 1);
     }
 
     #[test]
