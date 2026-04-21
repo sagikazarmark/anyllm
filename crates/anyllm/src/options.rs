@@ -78,6 +78,31 @@ impl RequestOptions {
         self.inner.contains_key(&TypeId::of::<T>())
     }
 
+    /// Borrow a typed option, inserting a default value produced by `f` when
+    /// none is present.
+    ///
+    /// The returned reference is always valid: if no value of type `T` was
+    /// stored, `f` is invoked, its result is inserted, and a mutable borrow
+    /// of the stored value is returned. Otherwise the existing value is
+    /// borrowed in place without invoking `f`.
+    ///
+    /// Useful for providers or wrappers that maintain an accumulating
+    /// request-scoped configuration (for example, appending beta flags to a
+    /// provider-specific options struct) without having to pattern-match on
+    /// the absence of a prior value.
+    pub fn get_or_insert_with<T, F>(&mut self, f: F) -> &mut T
+    where
+        T: Clone + Send + Sync + 'static,
+        F: FnOnce() -> T,
+    {
+        self.inner
+            .entry(TypeId::of::<T>())
+            .or_insert_with(|| ErasedValue::new(f()))
+            .as_any_mut()
+            .downcast_mut::<T>()
+            .expect("type id matches inserted value type")
+    }
+
     /// Returns whether the bag contains no typed options
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -482,6 +507,37 @@ mod tests {
         let _ = options.remove::<DemoOption>();
         assert!(options.is_empty());
         assert_eq!(options.len(), 0);
+    }
+
+    #[test]
+    fn request_options_get_or_insert_with_inserts_when_missing() {
+        let mut options = RequestOptions::new();
+        let value: &mut DemoOption = options.get_or_insert_with(|| DemoOption { enabled: true });
+        assert_eq!(value, &mut DemoOption { enabled: true });
+
+        value.enabled = false;
+
+        assert_eq!(
+            options.get::<DemoOption>(),
+            Some(&DemoOption { enabled: false })
+        );
+        assert_eq!(options.len(), 1);
+    }
+
+    #[test]
+    fn request_options_get_or_insert_with_does_not_invoke_when_present() {
+        let mut options = RequestOptions::new();
+        options.insert(DemoOption { enabled: true });
+
+        let mut invoked = false;
+        let value: &mut DemoOption = options.get_or_insert_with(|| {
+            invoked = true;
+            DemoOption { enabled: false }
+        });
+
+        assert!(!invoked, "factory should not run when value is present");
+        assert_eq!(value, &mut DemoOption { enabled: true });
+        assert_eq!(options.len(), 1);
     }
 
     #[test]
