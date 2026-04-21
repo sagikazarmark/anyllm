@@ -20,6 +20,12 @@ Anthropic provider adapter for `anyllm`.
 It does not currently report native structured-output support, so cross-provider
 typed extraction uses the non-native fallback path where appropriate.
 
+Embeddings are not in scope for this adapter: Anthropic does not expose an
+embeddings API directly, and Voyage AI (the partner model provider) ships
+through its own SDK. If you need embeddings alongside Claude chat, pair this
+crate with an embedding-capable adapter such as `anyllm-openai`,
+`anyllm-gemini`, or `anyllm-openai-compat`.
+
 ## Quick start
 
 ```toml
