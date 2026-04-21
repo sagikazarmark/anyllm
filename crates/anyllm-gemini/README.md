@@ -53,20 +53,7 @@ Environment variables:
 
 ## Notes
 
-- Use `Provider::new_with_base_url(...)` or `Provider::builder()` when you need
-  a custom base URL or HTTP client.
-- The default client applies a 120 second timeout to non-streaming requests only.
-  Streaming requests intentionally avoid a whole-request wall clock timeout so
-  long-lived SSE responses are not cut off mid-stream.
-- Gemini finish semantics are normalized so tool-call responses produce the
-  common `FinishReason::ToolCalls` contract.
-- Reasoning/thinking content is surfaced as `ContentBlock::Reasoning` when the
-  model returns it.
-- `ChatRequestOptions.candidate_count` currently supports only `1`; larger
-  values are rejected until `anyllm` grows a multi-candidate response shape.
 - Prefer portable `ChatRequest.response_format(...)` over
-  `ChatRequestOptions.response_mime_type`. The provider-specific MIME override is
-  an escape hatch for advanced Gemini-only cases.
-- Image URLs are converted through Gemini's file-data path using best-effort
-  MIME inference from the URL extension, so extensionless signed URLs are not
-  accepted yet.
+  `ChatRequestOptions.response_mime_type`; the latter is an escape hatch for
+  advanced Gemini-only cases.
+- Gemini-specific request knobs live in typed `ChatRequestOptions`.

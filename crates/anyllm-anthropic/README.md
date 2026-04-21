@@ -60,24 +60,9 @@ Environment variables:
 
 ## Notes
 
-- Use `Provider::new_with_base_url(...)` or `Provider::builder()` when you need
-  a custom base URL or HTTP client.
-- The default transport applies a 120 second timeout to non-streaming requests
-  only. Streaming requests intentionally avoid a whole-request wall clock
-  timeout so long-lived SSE responses are not cut off mid-stream.
-- Inject your own `reqwest::Client` with `Provider::builder().client(...)` when
-  you need a different transport policy.
-- Anthropic reasoning signatures and reasoning text are preserved in streamed and
-  collected responses.
 - Anthropic-specific request knobs live in typed `ChatRequestOptions` rather
   than top-level untyped JSON.
-- Anthropic does not support `ChatRequest.response_format`; use plain text or the
-  shared extraction fallback path instead.
-- Tool-result replay is text-only on this adapter; multimodal tool results are
-  rejected instead of being silently degraded.
-- The adapter currently targets the Anthropic content block types exercised by
-  this repo's conformance and integration tests. Unknown newer block types are
-  not normalized yet.
-- If `max_tokens` is omitted, the adapter sends Anthropic's default output budget
-  of `4096`, and reasoning budgets may bump that ceiling upward to satisfy the
-  API's `budget_tokens < max_tokens` requirement.
+- Anthropic does not support `ChatRequest.response_format`; use plain text or
+  the shared extraction fallback path instead.
+- Reasoning signatures and reasoning text are preserved in streamed and
+  collected responses.
