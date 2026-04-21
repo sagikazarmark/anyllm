@@ -84,19 +84,3 @@ async fn handler(env: &worker::Env) -> Result<String> {
 [ai]
 binding = "AI"
 ```
-
-- The generic live integration suite in `anyllm-examples` does not cover this
-  crate through direct provider construction because it needs a Worker runtime
-  rather than plain local env vars.
-- For a real runtime smoke target, use the Wrangler app in this repo's
-  `worker-smoke/` directory and hit `/chat` or `/stream` locally with
-  `wrangler dev`.
-- For a single-command local release check, run
-  `worker-smoke/run_live_smoke.sh`. It starts Wrangler, waits for the Worker to
-  come up, and then runs the shared `anyllm-examples` Cloudflare live smoke
-  test against it.
-- The Worker smoke app validates basic chat, basic streaming, a non-streaming
-  tool round-trip, and non-streaming `response_format` handling.
-- Once that smoke app is running, you can wire it into the shared release e2e
-  suite with `ANYLLM_LIVE_PROVIDER=cloudflare-worker` and
-  `ANYLLM_CLOUDFLARE_WORKER_SMOKE_URL=http://127.0.0.1:8787`.

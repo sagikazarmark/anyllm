@@ -7,28 +7,9 @@
 
 **Provider-agnostic LLM abstractions and adapters for Rust.**
 
-`anyllm` lets you build against LLM APIs (chat and embeddings) without
-hard-coding the rest of your application to one provider SDK.
-
-The core of the project is the [`anyllm`](crates/anyllm) crate: a small, low-level
-abstraction layer with shared request and response types for both chat (streaming,
-tool calls, structured output) and embeddings, plus a handful of wrappers.
-
-The intent is to keep application-facing code portable and keep
-provider-specific request translation, transport, and parsing in provider
-crates.
-
-That gives applications and libraries one interface for model interaction while
-leaving provider-specific details at the edges.
-
-`anyllm` is intentionally a building block, not an agent framework or
-orchestration runtime.
-
-## Where To Start
-
-- use `anyllm` in application code: [`anyllm`](crates/anyllm)
-- implement a provider: [`crates/anyllm/examples/provider_impl.rs`](crates/anyllm/examples/provider_impl.rs)
-- explore the API: [`docs.rs/anyllm`](https://docs.rs/anyllm)
+`anyllm` lets you build against LLM APIs (chat and embeddings) with one
+portable contract, and pair it with a provider crate for request
+translation and transport. It is a building block, not an agent framework.
 
 ## Workspace Crates
 

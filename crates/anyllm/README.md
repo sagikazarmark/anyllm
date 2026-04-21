@@ -66,33 +66,6 @@ From the workspace root:
 cargo run -p anyllm --example chat --features mock
 ```
 
-## Core Types
-
-`anyllm` keeps the common path small. Types are organized around two sibling
-capabilities: **chat** and **embedding**, both requiring `ProviderIdentity`.
-
-**Chat**
-
-- `ChatProvider` defines one-shot and streaming chat APIs
-- `ChatRequest`, `Message`, `ChatResponse`, and `ContentBlock` carry normalized data
-- `StreamEvent`, `ChatStream`, and `StreamCollector` handle streaming
-- `DynChatProvider` enables runtime selection when you need dynamic dispatch
-
-**Embedding**
-
-- `EmbeddingProvider` defines a batch-oriented `embed()` method
-- `EmbeddingRequest`, `EmbeddingResponse`, and `EmbeddingCapability` carry normalized data
-- `DynEmbeddingProvider` mirrors `DynChatProvider` for runtime polymorphism
-- `EmbeddingProviderExt::embed_text` is a single-input convenience
-
-**Shared**
-
-- `ProviderIdentity`: super-trait for both capability traits, carries `provider_name`
-- `CapabilitySupport`: `Supported` / `Unsupported` / `Unknown` for capability queries
-- `Usage`, `RequestOptions`, `ResponseMetadata`, and extension maps leave room for provider-specific behavior
-
-The goal is portability without pretending every provider is identical.
-
 ## Features
 
 Default features are empty.
@@ -117,14 +90,3 @@ Embedding providers implement a single batch-oriented `embed()` method.
 If you need a working skeleton, start here:
 
 - <https://github.com/sagikazarmark/anyllm/blob/main/crates/anyllm/examples/provider_impl.rs>
-
-## Test Helpers
-
-With the `mock` feature enabled, the crate also includes lightweight testing
-helpers:
-
-- `MockProvider` for canned one-shot chat responses
-- `MockStreamingProvider` for normalized stream sequences and injected failures
-- `MockToolRoundTrip` for common tool-call conversation fixtures
-- `ChatResponseBuilder` for compact chat response construction in tests
-- `MockEmbeddingProvider` for canned embedding responses with request recording

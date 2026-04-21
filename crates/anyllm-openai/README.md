@@ -60,20 +60,9 @@ Environment variables:
 
 ## Notes
 
-- Use `Provider::new_with_base_url(...)` or `Provider::builder()` when you need
-  a custom base URL or HTTP client.
-- The default transport applies a 120 second timeout to non-streaming requests
-  only. Streaming requests intentionally avoid a whole-request wall clock
-  timeout so long-lived SSE responses are not cut off mid-stream.
-- Inject your own `reqwest::Client` with `Provider::builder().client(...)` when
-  you need a different transport policy.
 - Portable `ChatRequest.seed(...)` and `ChatRequest.parallel_tool_calls(...)`
-  are the supported ways to set those controls. `ChatRequestOptions` is only for
-  OpenAI-specific request fields.
-- Response metadata is exposed as typed `ChatResponseMetadata` in
+  are the supported ways to set those controls. `ChatRequestOptions` is only
+  for OpenAI-specific request fields.
+- Response metadata is exposed as typed `ChatResponseMetadata` on
   `ChatResponse.metadata`.
-- `OpenAIReasoningEffort` is re-exported from this crate so callers do not need
-  a direct dependency on `anyllm-openai-compat` to use OpenAI-specific
-  reasoning-effort controls.
-- If you need to build an adapter for an OpenAI-style non-OpenAI provider, look
-  at `anyllm-openai-compat` instead of copying this crate.
+- `OpenAIReasoningEffort` is re-exported from this crate.
