@@ -158,8 +158,6 @@ impl Error {
             Error::Provider {
                 status: Some(s), ..
             } => *s >= 500,
-            #[cfg(feature = "extract")]
-            Error::Extract(_) => false,
             Error::Fallback { fallback, .. } => fallback.is_retryable(),
             _ => false,
         }
@@ -194,6 +192,12 @@ impl Error {
     /// [`is_transient`](Self::is_transient). Useful for credential-rotation
     /// or escalation policies that want a dedicated branch for auth failures
     /// without matching on the full enum.
+    ///
+    /// Narrow by design: this does not match [`Error::Provider`] responses
+    /// that happen to carry a 401 or 403 HTTP status. Provider crates are
+    /// responsible for normalizing authentication failures into
+    /// [`Error::Auth`]; if they leave them as [`Error::Provider`], this
+    /// predicate will under-report.
     #[must_use]
     pub fn is_auth(&self) -> bool {
         match self {
