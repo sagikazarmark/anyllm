@@ -60,6 +60,14 @@ fn supports_openai_vision(model: &str) -> bool {
         || model.starts_with("o4")
 }
 
+fn supports_openai_reasoning_config(model: &str) -> bool {
+    let model = model.trim().to_ascii_lowercase();
+    model.starts_with("gpt-5")
+        || model.starts_with("o1")
+        || model.starts_with("o3")
+        || model.starts_with("o4")
+}
+
 pub(crate) fn request_timeout(stream: bool, default_timeout: Option<Duration>) -> Option<Duration> {
     if stream { None } else { default_timeout }
 }
@@ -159,7 +167,13 @@ impl Provider {
             | ChatCapability::ParallelToolCalls
             | ChatCapability::Streaming
             | ChatCapability::NativeStreaming => CapabilitySupport::Supported,
-            ChatCapability::ReasoningConfig => CapabilitySupport::Unknown,
+            ChatCapability::ReasoningConfig => {
+                if supports_openai_reasoning_config(model) {
+                    CapabilitySupport::Supported
+                } else {
+                    CapabilitySupport::Unknown
+                }
+            }
             ChatCapability::ImageInput | ChatCapability::ImageDetail => {
                 if supports_openai_vision(model) {
                     CapabilitySupport::Supported
@@ -174,6 +188,9 @@ impl Provider {
                     CapabilitySupport::Unknown
                 }
             }
+            // Chat Completions does not return reasoning content to the
+            // client (only a `reasoning_tokens` count in usage), so there is
+            // nothing to emit as `ContentBlock::Reasoning` or to replay.
             ChatCapability::ImageOutput
             | ChatCapability::ImageReplay
             | ChatCapability::ReasoningOutput
@@ -499,6 +516,22 @@ mod tests {
         assert_eq!(
             provider.chat_capability("gpt-4o", ChatCapability::ReasoningConfig),
             CapabilitySupport::Unknown
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-5", ChatCapability::ReasoningConfig),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.chat_capability("o3-mini", ChatCapability::ReasoningConfig),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-4o", ChatCapability::ReasoningOutput),
+            CapabilitySupport::Unsupported
+        );
+        assert_eq!(
+            provider.chat_capability("o3-mini", ChatCapability::ReasoningOutput),
+            CapabilitySupport::Unsupported
         );
         assert_eq!(
             provider.chat_capability("gpt-3.5-turbo", ChatCapability::StructuredOutput),
