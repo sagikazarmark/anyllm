@@ -1,3 +1,4 @@
+pub mod contract;
 pub mod e2e;
 mod http_test_server;
 
