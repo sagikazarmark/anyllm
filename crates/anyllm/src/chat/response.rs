@@ -341,7 +341,7 @@ impl From<&ChatResponse> for Message {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum FinishReason {
-    /// The model completed its response naturally — end-of-turn signal,
+    /// The model completed its response naturally: end-of-turn signal,
     /// stop-sequence match, or equivalent provider-specific termination.
     Stop,
 
@@ -361,7 +361,7 @@ pub enum FinishReason {
 
     /// A finish reason the portable enum does not model. The inner string is
     /// the provider's raw wire token, preserved verbatim. Avoid pattern-
-    /// matching on specific strings — the value is provider-specific and may
+    /// matching on specific strings: the value is provider-specific and may
     /// change between provider versions.
     Other(String),
 }
