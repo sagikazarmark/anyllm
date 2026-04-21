@@ -119,6 +119,11 @@ impl Provider {
         let response = req.body(body).send().await.map_err(map_transport_error)?;
         let status = response.status();
         if !status.is_success() {
+            let request_id = response
+                .headers()
+                .get("x-request-id")
+                .and_then(|v| v.to_str().ok())
+                .map(String::from);
             let retry_after = response
                 .headers()
                 .get("retry-after")
@@ -130,7 +135,12 @@ impl Provider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Failed to read error body".to_string());
-            return Err(map_http_error(status.as_u16(), &error_body, retry_after));
+            return Err(map_http_error(
+                status.as_u16(),
+                &error_body,
+                request_id,
+                retry_after,
+            ));
         }
         Ok(response)
     }

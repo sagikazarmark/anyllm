@@ -62,6 +62,12 @@ impl Provider {
         let status = response.status();
 
         if !status.is_success() {
+            let request_id = response
+                .headers()
+                .get("x-request-id")
+                .and_then(|v| v.to_str().ok())
+                .map(String::from);
+
             let retry_after = parse_retry_after_header(response.headers());
 
             let error_body = response
@@ -69,7 +75,12 @@ impl Provider {
                 .await
                 .unwrap_or_else(|_| "Failed to read error body".to_string());
 
-            return Err(map_http_error(status.as_u16(), &error_body, retry_after));
+            return Err(map_http_error(
+                status.as_u16(),
+                &error_body,
+                request_id,
+                retry_after,
+            ));
         }
 
         Ok(response)

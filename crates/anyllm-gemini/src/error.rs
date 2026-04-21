@@ -74,6 +74,7 @@ where
 pub(crate) fn map_http_error(
     status: u16,
     body: &str,
+    request_id: Option<String>,
     retry_after: Option<std::time::Duration>,
 ) -> anyllm::Error {
     let api_error = serde_json::from_str::<GeminiErrorResponse>(body).ok();
@@ -114,25 +115,25 @@ pub(crate) fn map_http_error(
         429 => anyllm::Error::RateLimited {
             message: error_message,
             retry_after,
-            request_id: None,
+            request_id,
         },
         503 => anyllm::Error::Overloaded {
             message: error_message,
             retry_after,
-            request_id: None,
+            request_id,
         },
         400..=499 => anyllm::Error::InvalidRequest(error_message),
         500..=599 => anyllm::Error::Provider {
             status: Some(status),
             message: error_message,
             body: Some(body.to_string()),
-            request_id: None,
+            request_id,
         },
         _ => anyllm::Error::Provider {
             status: Some(status),
             message: error_message,
             body: Some(body.to_string()),
-            request_id: None,
+            request_id,
         },
     }
 }
@@ -141,9 +142,10 @@ pub(crate) fn map_http_error(
 pub(crate) fn conformance_map_http_error(
     status: u16,
     body: &str,
+    request_id: Option<String>,
     retry_after: Option<std::time::Duration>,
 ) -> anyllm::Error {
-    map_http_error(status, body, retry_after)
+    map_http_error(status, body, request_id, retry_after)
 }
 
 #[cfg(test)]
@@ -187,7 +189,7 @@ mod tests {
     #[test]
     fn maps_401_to_auth() {
         let body = gemini_error_body(401, "API key not valid", "UNAUTHENTICATED");
-        let err = map_http_error(401, &body, None);
+        let err = map_http_error(401, &body, None, None);
         match err {
             anyllm::Error::Auth(msg) => assert_eq!(msg, "API key not valid"),
             other => panic!("Expected Auth, got {other:?}"),
@@ -197,7 +199,7 @@ mod tests {
     #[test]
     fn maps_403_to_auth() {
         let body = gemini_error_body(403, "Permission denied", "PERMISSION_DENIED");
-        let err = map_http_error(403, &body, None);
+        let err = map_http_error(403, &body, None, None);
         match err {
             anyllm::Error::Auth(msg) => assert_eq!(msg, "Permission denied"),
             other => panic!("Expected Auth, got {other:?}"),
@@ -208,7 +210,7 @@ mod tests {
     fn maps_permission_denied_status_to_auth() {
         // Even on non-403 status, PERMISSION_DENIED → Auth
         let body = gemini_error_body(400, "Caller does not have permission", "PERMISSION_DENIED");
-        let err = map_http_error(400, &body, None);
+        let err = map_http_error(400, &body, None, None);
         match err {
             anyllm::Error::Auth(msg) => assert!(msg.contains("permission")),
             other => panic!("Expected Auth, got {other:?}"),
@@ -219,7 +221,7 @@ mod tests {
     fn maps_429_to_rate_limited() {
         let body = gemini_error_body(429, "Quota exceeded", "RESOURCE_EXHAUSTED");
         let retry_after = Some(std::time::Duration::from_secs(30));
-        let err = map_http_error(429, &body, retry_after);
+        let err = map_http_error(429, &body, None, retry_after);
         match err {
             anyllm::Error::RateLimited {
                 message,
@@ -236,7 +238,7 @@ mod tests {
     #[test]
     fn maps_503_to_overloaded() {
         let body = "Service Unavailable";
-        let err = map_http_error(503, body, None);
+        let err = map_http_error(503, body, None, None);
         match err {
             anyllm::Error::Overloaded { message, .. } => {
                 assert_eq!(message, "Service Unavailable");
@@ -252,7 +254,7 @@ mod tests {
             "This model's maximum context length is exceeded",
             "INVALID_ARGUMENT",
         );
-        let err = map_http_error(400, &body, None);
+        let err = map_http_error(400, &body, None, None);
         match err {
             anyllm::Error::ContextLengthExceeded { .. } => {}
             other => panic!("Expected ContextLengthExceeded, got {other:?}"),
@@ -266,7 +268,7 @@ mod tests {
             "Response was blocked due to safety settings",
             "INVALID_ARGUMENT",
         );
-        let err = map_http_error(400, &body, None);
+        let err = map_http_error(400, &body, None, None);
         match err {
             anyllm::Error::ContentFiltered(_) => {}
             other => panic!("Expected ContentFiltered, got {other:?}"),
@@ -276,7 +278,7 @@ mod tests {
     #[test]
     fn maps_400_model_missing_message_to_model_not_found() {
         let body = gemini_error_body(400, "model does not exist", "INVALID_ARGUMENT");
-        let err = map_http_error(400, &body, None);
+        let err = map_http_error(400, &body, None, None);
         match err {
             anyllm::Error::ModelNotFound(msg) => {
                 assert_eq!(msg, "model does not exist");
@@ -288,7 +290,7 @@ mod tests {
     #[test]
     fn maps_500_to_provider() {
         let body = gemini_error_body(500, "Internal server error", "INTERNAL");
-        let err = map_http_error(500, &body, None);
+        let err = map_http_error(500, &body, None, None);
         match err {
             anyllm::Error::Provider {
                 status, message, ..
@@ -303,7 +305,7 @@ mod tests {
     #[test]
     fn falls_back_to_raw_body_when_not_structured() {
         let body = "Bad Gateway";
-        let err = map_http_error(502, body, None);
+        let err = map_http_error(502, body, None, None);
         match err {
             anyllm::Error::Provider { message, .. } => {
                 assert_eq!(message, "Bad Gateway");
@@ -315,7 +317,7 @@ mod tests {
     #[test]
     fn maps_404_to_model_not_found() {
         let body = gemini_error_body(404, "Model not found", "NOT_FOUND");
-        let err = map_http_error(404, &body, None);
+        let err = map_http_error(404, &body, None, None);
         match err {
             anyllm::Error::ModelNotFound(msg) => {
                 assert_eq!(msg, "Model not found");
