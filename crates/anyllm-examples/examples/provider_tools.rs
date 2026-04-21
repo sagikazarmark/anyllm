@@ -1,3 +1,4 @@
+use anyllm::ToolCallRef;
 use anyllm::prelude::*;
 use anyllm_examples::{load_provider_for_example, print_provider_banner};
 use serde::Deserialize;

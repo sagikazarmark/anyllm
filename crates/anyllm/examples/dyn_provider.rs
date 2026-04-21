@@ -1,3 +1,4 @@
+use anyllm::ProviderIdentity;
 use anyllm::prelude::*;
 
 struct StaticProvider;

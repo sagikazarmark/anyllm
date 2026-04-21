@@ -98,20 +98,24 @@ pub type ExtraMap = serde_json::Map<String, serde_json::Value>;
 
 /// Prelude module — import `use anyllm::prelude::*` for common application-facing types.
 ///
-/// The prelude intentionally omits some more specialized record and stream
-/// diagnostics types so those remain explicit when used.
+/// The prelude intentionally omits specialized types so they remain explicit at
+/// the callsite: record snapshots ([`ChatRequestRecord`], [`ChatResponseRecord`]),
+/// stream diagnostics ([`CollectedResponse`], [`StreamCompleteness`]),
+/// provider-authoring hooks ([`ProviderIdentity`], [`ChatCapabilityResolver`]),
+/// the redacted logging view ([`ErrorLog`]), the JSON escape hatch ([`ExtraMap`]),
+/// and variant reference types (e.g. [`ToolCallRef`], [`AssistantMessageRef`]).
 pub mod prelude {
     pub use futures_util::StreamExt;
 
     pub use crate::{
-        CapabilitySupport, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
-        ChatRequest, ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart,
-        DynChatProvider, DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider,
-        EmbeddingProviderExt, EmbeddingRequest, EmbeddingResponse, Error, ErrorLog, ExtraMap,
-        FallbackChatProvider, FinishReason, ImageSource, Message, OwnedToolCall, ProviderIdentity,
-        ReasoningConfig, ReasoningEffort, ResponseFormat, Result, RetryPolicy,
-        RetryingChatProvider, SingleResponseStream, StreamBlockType, StreamCollector, StreamEvent,
-        SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolResultContent, Usage, UserContent,
+        CapabilitySupport, ChatCapability, ChatProvider, ChatProviderExt, ChatRequest,
+        ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart, DynChatProvider,
+        DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
+        EmbeddingRequest, EmbeddingResponse, Error, FallbackChatProvider, FinishReason,
+        ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
+        Result, RetryPolicy, RetryingChatProvider, SingleResponseStream, StreamBlockType,
+        StreamCollector, StreamEvent, SystemPrompt, Tool, ToolChoice, ToolResultContent, Usage,
+        UserContent,
     };
 
     #[cfg(any(test, feature = "mock"))]
