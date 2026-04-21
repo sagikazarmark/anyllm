@@ -200,3 +200,24 @@ jobs:
           # version on crates.io. The crate is pre-release; the main branch is
           # the moving source of truth until 0.1.0 ships.
           baseline-rev: ${{ github.event.pull_request.base.sha }}
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    # Keep in sync with `rust-version` in the workspace Cargo.toml. Bumping
+    # MSRV requires updating both the manifest and this toolchain string.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: "1.92"
+
+      - name: Set up Rust
+        uses: ./.github/actions/rust/
+
+      - name: Check on MSRV toolchain
+        run: cargo +1.92 check --workspace --all-targets --all-features
