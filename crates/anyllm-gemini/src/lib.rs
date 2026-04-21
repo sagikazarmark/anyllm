@@ -106,16 +106,15 @@ impl Provider {
     ) -> CapabilitySupport {
         match capability {
             ChatCapability::ToolCalls
+            | ChatCapability::ParallelToolCalls
             | ChatCapability::Streaming
             | ChatCapability::NativeStreaming
             | ChatCapability::ImageInput
             | ChatCapability::ImageOutput
+            | ChatCapability::ImageReplay
             | ChatCapability::StructuredOutput
             | ChatCapability::ReasoningOutput
             | ChatCapability::ReasoningConfig => CapabilitySupport::Supported,
-            ChatCapability::ParallelToolCalls | ChatCapability::ImageReplay => {
-                CapabilitySupport::Unknown
-            }
             ChatCapability::ImageDetail | ChatCapability::ReasoningReplay => {
                 CapabilitySupport::Unsupported
             }
@@ -394,16 +393,16 @@ mod tests {
     }
 
     #[test]
-    fn builtin_capabilities_stay_conservative_for_replay_and_parallel_controls() {
+    fn builtin_capabilities_report_parallel_tools_and_image_replay() {
         let provider = Provider::new("test-key").unwrap();
 
         assert_eq!(
             provider.chat_capability("gemini-2.5-pro", ChatCapability::ParallelToolCalls),
-            CapabilitySupport::Unknown
+            CapabilitySupport::Supported
         );
         assert_eq!(
             provider.chat_capability("gemini-2.5-pro", ChatCapability::ImageReplay),
-            CapabilitySupport::Unknown
+            CapabilitySupport::Supported
         );
         assert_eq!(
             provider.chat_capability("gemini-2.5-pro", ChatCapability::StructuredOutput),
