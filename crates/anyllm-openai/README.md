@@ -12,14 +12,19 @@ OpenAI provider adapter for `anyllm`.
 
 `anyllm-openai` currently reports:
 
-- tools
+- tools, including parallel tool calls
 - streaming
-- model-dependent vision support as `Unknown`
-- model-dependent structured output support as `Unknown`
-- model-dependent parallel tool call support as `Unknown`
+- vision and per-image detail, for the gpt-4o, gpt-4.1, gpt-5, and
+  o-series model families
+- native structured output, for the same model families
+- request-side reasoning effort, for the gpt-5 and o-series reasoning
+  models
 
-It does not currently expose reasoning/thinking content as first-class
-`ContentBlock::Reasoning` output.
+OpenAI's Chat Completions API does not return reasoning content to the
+client; only a `reasoning_tokens` count surfaces in the usage object.
+`ReasoningOutput` and `ReasoningReplay` are therefore reported as
+`Unsupported`. A future adapter built on OpenAI's Responses API could
+surface reasoning blocks directly; this adapter does not.
 
 ## Quick start
 
