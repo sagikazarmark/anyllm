@@ -117,6 +117,7 @@ mod tests {
             })
             .to_string(),
             None,
+            None,
         );
         assert_error_fixture_eq(&auth, &fixtures, "error_auth.json");
 
@@ -130,6 +131,7 @@ mod tests {
                 }
             })
             .to_string(),
+            None,
             Some(std::time::Duration::from_secs(30)),
         );
         assert_error_fixture_eq(&rate_limited, &fixtures, "error_rate_limited.json");
@@ -145,6 +147,7 @@ mod tests {
             })
             .to_string(),
             None,
+            None,
         );
         assert_error_fixture_eq(&context, &fixtures, "error_context_length.json");
 
@@ -158,6 +161,7 @@ mod tests {
                 }
             })
             .to_string(),
+            None,
             None,
         );
         assert_error_fixture_eq(&model_not_found, &fixtures, "error_model_not_found.json");
@@ -207,6 +211,7 @@ mod tests {
             })
             .to_string(),
             None,
+            None,
         );
         assert_embedding_error_fixture_eq(&auth, &fixtures, "embed_error_auth.json");
 
@@ -220,6 +225,7 @@ mod tests {
                 }
             })
             .to_string(),
+            None,
             Some(std::time::Duration::from_secs(30)),
         );
         assert_embedding_error_fixture_eq(
@@ -239,6 +245,7 @@ mod tests {
             })
             .to_string(),
             None,
+            None,
         );
         assert_embedding_error_fixture_eq(&context, &fixtures, "embed_error_context_length.json");
 
@@ -252,6 +259,7 @@ mod tests {
                 }
             })
             .to_string(),
+            None,
             None,
         );
         assert_embedding_error_fixture_eq(
