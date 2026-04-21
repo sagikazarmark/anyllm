@@ -50,6 +50,16 @@ fn supports_openai_structured_output(model: &str) -> bool {
         || model.starts_with("o4")
 }
 
+fn supports_openai_vision(model: &str) -> bool {
+    let model = model.trim().to_ascii_lowercase();
+    model.starts_with("gpt-4.1")
+        || model.starts_with("gpt-4o")
+        || model.starts_with("gpt-5")
+        || model.starts_with("o1")
+        || model.starts_with("o3")
+        || model.starts_with("o4")
+}
+
 pub(crate) fn request_timeout(stream: bool, default_timeout: Option<Duration>) -> Option<Duration> {
     if stream { None } else { default_timeout }
 }
@@ -149,9 +159,14 @@ impl Provider {
             | ChatCapability::ParallelToolCalls
             | ChatCapability::Streaming
             | ChatCapability::NativeStreaming => CapabilitySupport::Supported,
-            ChatCapability::ImageInput
-            | ChatCapability::ImageDetail
-            | ChatCapability::ReasoningConfig => CapabilitySupport::Unknown,
+            ChatCapability::ReasoningConfig => CapabilitySupport::Unknown,
+            ChatCapability::ImageInput | ChatCapability::ImageDetail => {
+                if supports_openai_vision(model) {
+                    CapabilitySupport::Supported
+                } else {
+                    CapabilitySupport::Unknown
+                }
+            }
             ChatCapability::StructuredOutput => {
                 if supports_openai_structured_output(model) {
                     CapabilitySupport::Supported
@@ -463,6 +478,22 @@ mod tests {
         );
         assert_eq!(
             provider.chat_capability("gpt-4o", ChatCapability::ImageInput),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-4o", ChatCapability::ImageDetail),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-4.1", ChatCapability::ImageInput),
+            CapabilitySupport::Supported
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-3.5-turbo", ChatCapability::ImageInput),
+            CapabilitySupport::Unknown
+        );
+        assert_eq!(
+            provider.chat_capability("gpt-3.5-turbo", ChatCapability::ImageDetail),
             CapabilitySupport::Unknown
         );
         assert_eq!(
