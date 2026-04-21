@@ -19,6 +19,7 @@ OpenAI provider adapter for `anyllm`.
 - native structured output, for the same model families
 - request-side reasoning effort, for the gpt-5 and o-series reasoning
   models
+- embeddings via `/v1/embeddings`, with optional output `dimensions`
 
 OpenAI's Chat Completions API does not return reasoning content to the
 client; only a `reasoning_tokens` count surfaces in the usage object.

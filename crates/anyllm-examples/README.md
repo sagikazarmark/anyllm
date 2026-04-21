@@ -25,7 +25,7 @@ run the same examples against a different provider.
 Each provider also supports a model override env var used by these examples:
 
 - OpenAI: `OPENAI_MODEL` (chat), `OPENAI_EMBEDDING_MODEL` (embedding)
-- Anthropic: `ANTHROPIC_MODEL` (chat only — no embedding API)
+- Anthropic: `ANTHROPIC_MODEL` (chat only; no embedding API)
 - Gemini: `GEMINI_MODEL` (chat), `GEMINI_EMBEDDING_MODEL` (embedding)
 
 If `PROVIDER` is unset, the loader auto-selects only when exactly one provider
@@ -39,12 +39,21 @@ Chat examples (all three providers):
 - `provider_chat`: one-shot request/response
 - `provider_stream`: normalized streaming text and metadata events
 - `provider_tools`: tool-call -> tool-result -> follow-up answer loop
+- `provider_parallel_tools`: two tools exercised in one response with `parallel_tool_calls(true)`
+- `provider_streaming_tools`: raw `StreamEvent` iteration showing tool-call blocks mid-stream
+- `provider_vision`: `Message::user_multimodal` with an image URL
+- `provider_reasoning`: `ReasoningConfig` + `reasoning_text()` inspection (see the example for per-provider model override notes)
 - `provider_extract`: env-driven structured extraction across providers
 - `record_replay`: portable request/response recording and replay
 
-Embedding examples (OpenAI and Gemini only — Anthropic has no embedding API):
+Embedding examples (OpenAI and Gemini only; Anthropic has no embedding API):
 
 - `provider_embedding`: batch text embedding with vector preview
+
+Multi-provider and provider-specific:
+
+- `cross_provider_fallback`: `FallbackChatProvider<OpenAI, Anthropic>` with the default auth-filter policy
+- `anthropic_prompt_caching`: Anthropic-specific `CacheControl` usage
 
 Example commands:
 
