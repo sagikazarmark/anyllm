@@ -32,7 +32,7 @@ tokio = { workspace = true, features = ["macros"] }
 default = ["extract", "reqwest/default-tls"]
 extract = ["anyllm/extract"]
 http-tracing = ["dep:reqwest-middleware", "dep:reqwest-tracing"]
-bench-internals = []
+__bench-internals = []
 
 [package.metadata.docs.rs]
 all-features = true
@@ -40,4 +40,4 @@ all-features = true
 [[bench]]
 name = "streaming"
 harness = false
-required-features = ["bench-internals"]
+required-features = ["__bench-internals"]

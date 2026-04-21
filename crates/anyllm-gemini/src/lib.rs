@@ -260,7 +260,7 @@ impl ProviderBuilder {
     }
 }
 
-#[cfg(any(test, feature = "bench-internals"))]
+#[cfg(any(test, feature = "__bench-internals"))]
 #[doc(hidden)]
 pub fn conformance_stream_from_sse_text(text: &str) -> anyllm::ChatStream {
     let normalized = if text.ends_with("\n\n") {
