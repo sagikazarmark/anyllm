@@ -117,7 +117,11 @@ impl Provider {
     fn plain_http_client(client: reqwest::Client) -> HttpClient {
         #[cfg(feature = "http-tracing")]
         {
-            reqwest_middleware::ClientBuilder::new(client).build()
+            reqwest_middleware::ClientBuilder::new(client)
+                .with(reqwest_tracing::TracingMiddleware::<
+                    reqwest_tracing::SpanBackendWithUrl,
+                >::new())
+                .build()
         }
         #[cfg(not(feature = "http-tracing"))]
         {
@@ -305,11 +309,11 @@ impl ProviderBuilder {
 
     /// Set a custom reqwest client.
     ///
-    /// When the `http-tracing` feature is enabled, the client is wrapped in a
-    /// `reqwest_middleware::ClientWithMiddleware` so provider-level spans can
-    /// be attached. Pass a pre-wrapped client via
-    /// [`client_with_middleware`](Self::client_with_middleware) when you want
-    /// full control over the middleware stack.
+    /// When the `http-tracing` feature is enabled, the client is wrapped
+    /// with a `reqwest_tracing::TracingMiddleware` so provider-level spans
+    /// continue to fire on outgoing requests. Use
+    /// [`client_with_middleware`](Self::client_with_middleware) instead
+    /// when you want to hand in a pre-built middleware stack unchanged.
     pub fn client(mut self, client: reqwest::Client) -> Self {
         self.client = Some(Provider::plain_http_client(client));
         self
@@ -317,8 +321,8 @@ impl ProviderBuilder {
 
     /// Set a custom `reqwest_middleware::ClientWithMiddleware`.
     ///
-    /// Use this when you have already built a middleware stack (for
-    /// example, retries plus tracing) and want the provider to send its
+    /// Use this when you have already built a middleware stack (retries,
+    /// custom tracing backend, etc.) and want the provider to send its
     /// requests through it unchanged. Only available with the
     /// `http-tracing` feature.
     #[cfg(feature = "http-tracing")]
