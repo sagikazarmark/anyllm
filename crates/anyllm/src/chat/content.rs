@@ -42,11 +42,23 @@ pub enum ContentBlock {
         /// Optional provider-specific signature for the reasoning block.
         signature: Option<String>,
     },
-    /// Provider-specific content block not modeled explicitly
+    /// Catch-all for content blocks the portable enum does not model.
+    ///
+    /// `type_name` carries the wire-level `"type"` discriminator and `data`
+    /// holds the rest of the block's fields verbatim. Serialization re-emits
+    /// the original flat `{"type": type_name, ...data}` shape, so unknown
+    /// block kinds round-trip losslessly through
+    /// [`ChatResponseRecord`](crate::ChatResponseRecord).
+    ///
+    /// Provider crates translate unrecognized wire block types into `Other`
+    /// rather than dropping them, which preserves provider-specific content
+    /// for callers that opt into reading it. Application code typically
+    /// inspects `type_name` and either handles known provider extensions or
+    /// treats the block as opaque.
     Other {
-        /// Provider-specific block type name.
+        /// Wire-level `"type"` discriminator for this block.
         type_name: String,
-        /// Provider-specific block payload fields.
+        /// Remaining block fields, preserved verbatim from the wire.
         data: ExtraMap,
     },
 }
