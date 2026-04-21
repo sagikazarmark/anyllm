@@ -108,6 +108,21 @@ jobs:
       - name: Check (no default features)
         run: cargo check --workspace --all-targets --no-default-features
 
+      - name: Check (anyllm feature matrix)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Intermediate subsets of anyllm's three features. The empty set is
+          # covered by the no-default-features step above and the full set by
+          # the build job's --all-features run; this loop catches leaks where a
+          # non-gated symbol references a type that only exists under some
+          # but not all of mock/extract/tracing (e.g. impls that need two
+          # features simultaneously).
+          for features in mock extract tracing "mock,extract" "mock,tracing" "extract,tracing"; do
+            echo "==> cargo check -p anyllm --features $features"
+            cargo check -p anyllm --no-default-features --features "$features" --all-targets
+          done
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
