@@ -16,8 +16,8 @@
 //! `anyllm` models each LLM capability as a sibling trait on top of a shared
 //! [`ProviderIdentity`] super-trait:
 //!
-//! - [`ChatProvider`] — one-shot and streaming chat completion
-//! - [`EmbeddingProvider`] — batch-oriented text embedding
+//! - [`ChatProvider`]: one-shot and streaming chat completion.
+//! - [`EmbeddingProvider`]: batch-oriented text embedding.
 //!
 //! Providers implement whichever capabilities they support. A provider that
 //! only exposes chat only implements `ChatProvider`; one that exposes both
@@ -32,7 +32,7 @@
 //! The portable chat core is centered on [`ChatRequest`], [`ChatResponse`],
 //! [`Message`], [`ContentBlock`], [`Tool`], and the streaming event model.
 //! The portable embedding core is centered on [`EmbeddingRequest`],
-//! [`EmbeddingResponse`], and [`EmbeddingCapability`] — intentionally narrower,
+//! [`EmbeddingResponse`], and [`EmbeddingCapability`], intentionally narrower
 //! because the provider overlap on embedding features is narrower.
 //!
 //! These types intentionally expose their portable fields directly and pair
@@ -48,6 +48,46 @@
 //! This means portability is best-effort rather than absolute. Converting to
 //! [`ChatRequestRecord`] or [`ChatResponseRecord`] preserves the portable core,
 //! but typed provider-specific data may be dropped or flattened to JSON.
+//!
+//! ## Wrappers
+//!
+//! Four wrappers implement [`ChatProvider`] on top of another
+//! [`ChatProvider`] and compose arbitrarily.
+//!
+//! | Want | Reach for |
+//! |------|-----------|
+//! | Retry the same provider on transient errors | [`RetryingChatProvider`] |
+//! | Swap to a different provider on failure | [`FallbackChatProvider`] |
+//! | OpenTelemetry GenAI spans around each call | `TracingChatProvider` (`tracing` feature) |
+//! | Parse responses into typed Rust structs | `ExtractExt::extract` (`extract` feature) |
+//!
+//! The recommended stacking order, outermost first:
+//!
+//! ```rust,ignore
+//! TracingChatProvider::new(
+//!     FallbackChatProvider::new(
+//!         RetryingChatProvider::new(primary),
+//!         RetryingChatProvider::new(fallback),
+//!     ),
+//! )
+//! ```
+//!
+//! Rationale:
+//!
+//! - **Tracing outermost.** Spans cover every downstream decision, so a
+//!   single trace shows the retry attempts and the fallback event.
+//! - **Fallback around retry.** Each backend gets its own retry budget;
+//!   exhausted retries on the primary trigger the fallback, and the
+//!   fallback has its own retry window.
+//! - **Retry innermost.** Transient errors are handled at the provider
+//!   that saw them, before bubbling out to the fallback decision.
+//!
+//! Structured extraction is orthogonal to the stack. `ExtractExt` is
+//! implemented for every wrapper and for [`DynChatProvider`], so
+//! `stacked.extract(&request)` works on any composition without an
+//! explicit `ExtractingProvider`. Reach for `ExtractingProvider` only
+//! when you want `chat()` itself to return the extraction-aware response
+//! shape rather than calling `extract` at the call site.
 
 mod capability;
 mod chat;
@@ -109,7 +149,7 @@ pub use usage::Usage;
 /// a wire-level blob verbatim.
 pub type ExtraMap = serde_json::Map<String, serde_json::Value>;
 
-/// Prelude module — import `use anyllm::prelude::*` for common application-facing types.
+/// Prelude module. Import `use anyllm::prelude::*` for common application-facing types.
 ///
 /// The prelude intentionally omits specialized types so they remain explicit at
 /// the callsite: record snapshots ([`ChatRequestRecord`], [`ChatResponseRecord`]),
