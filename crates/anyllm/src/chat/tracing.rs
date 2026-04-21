@@ -28,6 +28,7 @@ use crate::{
 /// metadata rather than at the message root.
 ///
 /// ```rust,no_run
+/// use anyllm::ProviderIdentity;
 /// use anyllm::prelude::*;
 ///
 /// struct StaticProvider;
