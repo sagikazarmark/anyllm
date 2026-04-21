@@ -322,20 +322,47 @@ impl From<&ChatResponse> for Message {
 
 /// Why the model stopped generating.
 ///
-/// Uses custom serde: known variants serialize as fixed strings,
-/// `Other(s)` serializes as the raw string `s`.
+/// The five-variant portable set is frozen for 0.1.0. The enum is
+/// `#[non_exhaustive]`: callers pattern-matching on it must include a
+/// catch-all arm, and new portable variants may be added in a minor version
+/// if a cross-provider pattern emerges. Provider-specific reasons that do not
+/// fit the portable set surface through [`Other`](Self::Other).
+///
+/// Serialization emits a fixed string per variant: `"stop"`, `"length"`,
+/// `"tool_calls"`, `"content_filter"`. [`Other`](Self::Other) serializes as
+/// the raw inner string. Deserialization and [`from_str`](Self::from_str) are
+/// infallible: any string that does not match a known variant becomes
+/// `Other(s)`, preserving round-trip fidelity through
+/// [`ChatResponseRecord`].
+///
+/// Provider crates are responsible for mapping their wire-level reasons onto
+/// this enum; inspect a provider's `wire.rs` for its current translation
+/// table.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum FinishReason {
-    /// Generation stopped normally
+    /// The model completed its response naturally — end-of-turn signal,
+    /// stop-sequence match, or equivalent provider-specific termination.
     Stop,
-    /// Generation stopped due to length limits
+
+    /// Generation was truncated because the model reached a token budget,
+    /// either the `max_tokens` on the request or the model's own context
+    /// limit.
     Length,
-    /// Generation stopped because the model issued tool calls
+
+    /// The model emitted one or more tool calls. The calls themselves appear
+    /// in [`ChatResponse`]'s `content` field as [`ContentBlock::ToolCall`]
+    /// entries.
     ToolCalls,
-    /// Generation stopped due to content filtering
+
+    /// Generation was interrupted by a provider's content-safety system. The
+    /// response body may be partial or empty.
     ContentFilter,
-    /// Provider-specific finish reason string
+
+    /// A finish reason the portable enum does not model. The inner string is
+    /// the provider's raw wire token, preserved verbatim. Avoid pattern-
+    /// matching on specific strings — the value is provider-specific and may
+    /// change between provider versions.
     Other(String),
 }
 
