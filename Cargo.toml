@@ -10,7 +10,7 @@ license = "MIT"
 repository = "https://github.com/sagikazarmark/anyllm"
 homepage = "https://github.com/sagikazarmark/anyllm"
 keywords = ["llm", "chat", "streaming"]
-categories = ["artificial-intelligence"]
+categories = ["api-bindings", "artificial-intelligence"]
 
 [workspace.dependencies]
 anyllm = { version = "0.0.1", path = "crates/anyllm" }
