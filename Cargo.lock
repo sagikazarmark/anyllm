@@ -40,7 +40,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "anyllm"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "criterion",
  "erased-serde",
@@ -57,7 +57,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-anthropic"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
@@ -76,7 +76,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-cloudflare-worker"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-conformance"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "axum",
@@ -105,7 +105,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-examples"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "anyllm-anthropic",
@@ -120,7 +120,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-gemini"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-openai"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",
@@ -159,7 +159,7 @@ dependencies = [
 
 [[package]]
 name = "anyllm-openai-compat"
-version = "0.0.1"
+version = "0.1.1"
 dependencies = [
  "anyllm",
  "anyllm-conformance",

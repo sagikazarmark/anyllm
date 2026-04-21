@@ -3,7 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT"
@@ -13,9 +13,9 @@ keywords = ["llm", "chat", "streaming"]
 categories = ["api-bindings", "artificial-intelligence"]
 
 [workspace.dependencies]
-anyllm = { version = "0.0.1", path = "crates/anyllm" }
-anyllm-conformance = { version = "0.0.1", path = "crates/anyllm-conformance" }
-anyllm-openai-compat = { version = "0.0.1", path = "crates/anyllm-openai-compat", default-features = false }
+anyllm = { version = "0.1.1", path = "crates/anyllm" }
+anyllm-conformance = { version = "0.1.1", path = "crates/anyllm-conformance" }
+anyllm-openai-compat = { version = "0.1.1", path = "crates/anyllm-openai-compat", default-features = false }
 criterion = "0.8"
 eventsource-stream = "0.2"
 futures-core = "0.3"
