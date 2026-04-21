@@ -6,11 +6,29 @@ use crate::ExtraMap;
 
 type ErasedAny = dyn Any + Send + Sync;
 
-/// Type-erased bag of per-request options keyed by Rust type.
+/// Typed, per-request extension bag keyed by Rust type.
 ///
-/// Providers can define custom option types and retrieve them by type at
-/// request time, enabling provider-specific configuration without polluting
-/// the shared [`ChatRequest`](crate::ChatRequest) surface.
+/// `RequestOptions` is the primary extension point for provider-specific
+/// request-time configuration. A provider crate defines its own option
+/// structs (a cache-control directive, a safety-settings struct, a reasoning
+/// budget, and so on); callers attach them to a
+/// [`ChatRequest`](crate::ChatRequest) via
+/// [`with_option`](crate::ChatRequest::with_option), and the provider reads
+/// them during request translation via
+/// [`option`](crate::ChatRequest::option). Entries are keyed by
+/// [`TypeId`](std::any::TypeId), so inserting two values of the same type
+/// replaces the prior entry and inserting unrelated types never collides.
+///
+/// A provider that does not recognize a stored option type silently ignores
+/// it. This is deliberate: a single `ChatRequest` can carry options for
+/// multiple providers (useful with
+/// [`FallbackChatProvider`](crate::FallbackChatProvider)), and a provider
+/// crate adding a new option type is non-breaking for existing callers.
+///
+/// Use this bag for typed, Rust-native configuration. For JSON-shaped
+/// pass-through data, use the [`ExtraMap`](crate::ExtraMap)-typed
+/// `extensions` fields on messages and tools. For response-side metadata,
+/// see [`ResponseMetadata`].
 ///
 /// Stored values must be `Clone` at insertion time so cloning a
 /// [`ChatRequest`](crate::ChatRequest) preserves its typed options.
@@ -176,14 +194,27 @@ impl Clone for ErasedValue {
     }
 }
 
-/// Type-erased bag of provider-specific metadata attached to a response.
+/// Provider-populated metadata attached to a
+/// [`ChatResponse`](crate::ChatResponse).
 ///
-/// Providers insert typed metadata values after a chat completion. Consumers
-/// retrieve them by type or serialize the bag to JSON for logging.
-/// Portable JSON metadata may also be stored directly, but callers should use
-/// distinct keys rather than intentionally reusing keys owned by typed
-/// metadata. Lossy export preserves portable values on collision, while strict
-/// export returns an error.
+/// `ResponseMetadata` holds two parallel stores that serialize together into
+/// a single flat JSON object: a typed bag keyed by Rust type (via the
+/// [`ResponseMetadataType`] trait, which carries a stable export `KEY`), and
+/// a portable [`ExtraMap`](crate::ExtraMap) of JSON-shaped entries. Typed
+/// entries are serialized under their `KEY` when the bag is exported.
+///
+/// Use typed entries for structured provider metadata that benefits from a
+/// Rust wrapper (request IDs, fingerprints, rate-limit hints). Use portable
+/// entries for JSON received from the wire that does not yet warrant a
+/// typed wrapper. Exporting via [`to_portable_map`](Self::to_portable_map)
+/// is lossy: it skips typed entries that fail to serialize and keeps
+/// portable entries on key collision. [`try_to_portable_map`](Self::try_to_portable_map)
+/// is strict: it returns an error for either case. Callers should avoid
+/// reusing a typed entry's `KEY` as a portable key.
+///
+/// For request-side typed options, see [`RequestOptions`]. For a plain JSON
+/// bag on individual message or tool wire types, see
+/// [`ExtraMap`](crate::ExtraMap).
 ///
 /// Typed entries must be cloneable at insertion time so cloning a
 /// [`ChatResponse`](crate::ChatResponse) preserves attached metadata.
@@ -379,9 +410,19 @@ impl fmt::Debug for ResponseMetadata {
     }
 }
 
-/// Marker trait for typed response metadata entries
+/// Marker trait for typed entries stored in [`ResponseMetadata`].
+///
+/// Implement this for provider-defined response-metadata types. Each
+/// implementation commits to a stable string `KEY`, used when the containing
+/// [`ResponseMetadata`] is exported to JSON: typed entries are serialized
+/// under their `KEY` into the portable map.
+///
+/// Choose a `KEY` that does not clash with other typed metadata types used
+/// alongside the provider. Changing a `KEY` after release is a wire-format
+/// break and should be treated as such.
 pub trait ResponseMetadataType: Any + Send + Sync + serde::Serialize {
-    /// Stable export key for this metadata type
+    /// Stable export key used when serializing this type via
+    /// [`ResponseMetadata`].
     const KEY: &'static str;
 }
 

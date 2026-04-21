@@ -92,8 +92,21 @@ pub use identity::ProviderIdentity;
 pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
 pub use usage::Usage;
 
-/// Portable JSON object used for provider-specific escape hatches.
-/// Uses `Map<String, Value>` instead of `Value` to enforce object semantics at compile time.
+/// Portable JSON object used wherever anyllm needs an untyped, wire-shaped
+/// key/value bag.
+///
+/// `ExtraMap` is the library's JSON-native escape hatch. It appears as the
+/// `data` field of [`ContentBlock::Other`], the `extensions` field on
+/// messages and tools, the `metadata` and `data` fields on stream events,
+/// and the portable half of [`ResponseMetadata`]. Aliasing to
+/// `serde_json::Map<String, serde_json::Value>` (rather than `Value`) makes
+/// the "this is a key/value bag" constraint compile-time: a scalar or array
+/// will not fit.
+///
+/// For Rust-native typed configuration, use [`RequestOptions`] on the request
+/// side or [`ResponseMetadataType`] entries on the response side. Reach for
+/// `ExtraMap` only when the data is inherently JSON-shaped or when preserving
+/// a wire-level blob verbatim.
 pub type ExtraMap = serde_json::Map<String, serde_json::Value>;
 
 /// Prelude module — import `use anyllm::prelude::*` for common application-facing types.
