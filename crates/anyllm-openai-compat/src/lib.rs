@@ -1,3 +1,22 @@
+//! Reusable OpenAI-compatible adapter toolkit for `anyllm` provider authors.
+//!
+//! Use this crate when building a new `anyllm` provider crate for an upstream
+//! API that is close enough to OpenAI's Chat Completions shape that wire
+//! translation, SSE parsing, and response conversion can be shared. It is not
+//! primarily intended for end-user application code; first-party provider
+//! crates (`anyllm-openai`, `anyllm-cloudflare-worker`) consume it.
+//!
+//! See [`providers`] for pre-configured factories and the crate README for
+//! the intended adapter shape, observability notes, and auth contracts.
+//!
+//! ```no_run
+//! use anyllm_openai_compat::providers::Cloudflare;
+//!
+//! # fn example() -> anyllm::Result<()> {
+//! let provider = Cloudflare::new("cf-account-id", "cf-api-token")?;
+//! # let _ = provider; Ok(()) }
+//! ```
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -35,7 +54,7 @@ pub use wire::{
 /// Construct via pre-configured provider factories in [`providers`] or use
 /// [`Provider::builder()`] for custom endpoints.
 ///
-/// Clone is cheap — internals are wrapped in `Arc`.
+/// Clone is cheap: internals are wrapped in `Arc`.
 #[derive(Clone)]
 pub struct Provider {
     pub(crate) inner: Arc<Inner>,
@@ -265,7 +284,7 @@ impl ProviderBuilder {
     /// Build the provider.
     pub fn build(self) -> Result<Provider> {
         let auth_header_value = self.auth_header_value.ok_or_else(|| {
-            Error::InvalidRequest("auth is required — use bearer_token() or auth_header()".into())
+            Error::InvalidRequest("auth is required: use bearer_token() or auth_header()".into())
         })?;
 
         let transport = TransportConfig {
