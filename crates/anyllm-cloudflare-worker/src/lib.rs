@@ -81,7 +81,7 @@ use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver};
 /// Cloudflare Workers AI provider implementing `anyllm::ChatProvider`.
 ///
 /// Wraps a `worker::Ai` binding to call AI models directly from within
-/// a Cloudflare Worker. No HTTP overhead — calls go through the Workers
+/// a Cloudflare Worker. No HTTP overhead: calls go through the Workers
 /// runtime's internal AI binding.
 ///
 /// # Construction

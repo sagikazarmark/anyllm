@@ -1,3 +1,24 @@
+//! Google Gemini provider adapter for `anyllm`.
+//!
+//! Implements [`anyllm::ChatProvider`] and [`anyllm::EmbeddingProvider`]
+//! against the Gemini API. Supports tools (including parallel tool calls),
+//! streaming, vision, structured output, and reasoning content as first-
+//! class [`anyllm::ContentBlock::Reasoning`] blocks. See the Capabilities
+//! section of the crate README for the current table.
+//!
+//! ```no_run
+//! use anyllm::prelude::*;
+//! use anyllm_gemini::Provider;
+//!
+//! # async fn example() -> anyllm::Result<()> {
+//! let provider = Provider::from_env()?;
+//! let response = provider
+//!     .chat(&ChatRequest::new("gemini-2.5-pro").user("Say hello."))
+//!     .await?;
+//! println!("{}", response.text_or_empty());
+//! # Ok(()) }
+//! ```
+
 use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
 use std::{sync::Arc, time::Duration};
 
@@ -19,7 +40,7 @@ type HttpClient = reqwest::Client;
 
 /// Google Gemini API provider implementing `anyllm::ChatProvider`.
 ///
-/// Clone is cheap — internals are wrapped in `Arc`.
+/// Clone is cheap: internals are wrapped in `Arc`.
 #[derive(Clone)]
 pub struct Provider {
     inner: Arc<Inner>,

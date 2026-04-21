@@ -1,3 +1,25 @@
+//! OpenAI provider adapter for `anyllm`.
+//!
+//! Implements [`anyllm::ChatProvider`] and [`anyllm::EmbeddingProvider`]
+//! against OpenAI's Chat Completions and Embeddings endpoints. Supported
+//! model-dependent features (tools, parallel tool calls, streaming, vision,
+//! structured output, reasoning effort) are classified per model family;
+//! see the Capabilities section of the crate README for the current table
+//! and the limitations around reasoning content.
+//!
+//! ```no_run
+//! use anyllm::prelude::*;
+//! use anyllm_openai::Provider;
+//!
+//! # async fn example() -> anyllm::Result<()> {
+//! let provider = Provider::from_env()?;
+//! let response = provider
+//!     .chat(&ChatRequest::new("gpt-4o").user("Say hello."))
+//!     .await?;
+//! println!("{}", response.text_or_empty());
+//! # Ok(()) }
+//! ```
+
 use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
 use std::{sync::Arc, time::Duration};
 
@@ -21,7 +43,7 @@ type HttpClient = reqwest::Client;
 
 /// OpenAI API provider implementing `anyllm::ChatProvider`.
 ///
-/// Clone is cheap — internals are wrapped in `Arc`.
+/// Clone is cheap: internals are wrapped in `Arc`.
 #[derive(Clone)]
 pub struct Provider {
     inner: Arc<Inner>,

@@ -1,3 +1,25 @@
+//! Anthropic provider adapter for `anyllm`.
+//!
+//! Implements [`anyllm::ChatProvider`] against the Anthropic Messages API
+//! with streamed reasoning content surfaced as
+//! [`anyllm::ContentBlock::Reasoning`], tool use, vision, and prompt
+//! caching via the [`CacheControl`] option. Embeddings are not in scope
+//! for this adapter; see the crate README for the stance and the
+//! embedding-capable alternatives.
+//!
+//! ```no_run
+//! use anyllm::prelude::*;
+//! use anyllm_anthropic::Provider;
+//!
+//! # async fn example() -> anyllm::Result<()> {
+//! let provider = Provider::from_env()?;
+//! let response = provider
+//!     .chat(&ChatRequest::new("claude-sonnet-4-20250514").user("Say hello."))
+//!     .await?;
+//! println!("{}", response.text_or_empty());
+//! # Ok(()) }
+//! ```
+
 use anyllm::{CapabilitySupport, ChatCapability, ChatCapabilityResolver, Error, Result};
 use std::{sync::Arc, time::Duration};
 
@@ -20,7 +42,7 @@ type HttpClient = reqwest::Client;
 
 /// Anthropic API provider implementing `anyllm::ChatProvider`.
 ///
-/// Clone is cheap — internals are wrapped in `Arc`.
+/// Clone is cheap: internals are wrapped in `Arc`.
 #[derive(Clone)]
 pub struct Provider {
     inner: Arc<Inner>,
