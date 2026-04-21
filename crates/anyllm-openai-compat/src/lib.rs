@@ -32,6 +32,11 @@ pub mod providers;
 mod streaming;
 mod wire;
 
+#[cfg(feature = "http-tracing")]
+type HttpClient = reqwest_middleware::ClientWithMiddleware;
+#[cfg(not(feature = "http-tracing"))]
+type HttpClient = reqwest::Client;
+
 pub use embedding::{
     EmbeddingData, EmbeddingRequestOptions, EmbeddingsRequest, EmbeddingsResponse, EmbeddingsUsage,
     from_embeddings_response, send_embeddings_request, to_embeddings_request,
@@ -61,7 +66,7 @@ pub struct Provider {
 }
 
 pub(crate) struct Inner {
-    pub(crate) client: reqwest::Client,
+    pub(crate) client: HttpClient,
     pub(crate) transport: TransportConfig,
     pub(crate) chat_capabilities: HashMap<ChatCapability, CapabilitySupport>,
     pub(crate) chat_capability_resolver: Option<Arc<dyn ChatCapabilityResolver>>,
@@ -91,10 +96,33 @@ fn builder_base_url(base_url: Option<String>) -> Result<String> {
 }
 
 impl Provider {
-    fn default_http_client() -> reqwest::Client {
-        reqwest::Client::builder()
+    fn default_http_client() -> HttpClient {
+        let base = reqwest::Client::builder()
             .build()
-            .expect("default OpenAI-compatible reqwest client config should be valid")
+            .expect("default OpenAI-compatible reqwest client config should be valid");
+        #[cfg(feature = "http-tracing")]
+        {
+            reqwest_middleware::ClientBuilder::new(base)
+                .with(reqwest_tracing::TracingMiddleware::<
+                    reqwest_tracing::SpanBackendWithUrl,
+                >::new())
+                .build()
+        }
+        #[cfg(not(feature = "http-tracing"))]
+        {
+            base
+        }
+    }
+
+    fn plain_http_client(client: reqwest::Client) -> HttpClient {
+        #[cfg(feature = "http-tracing")]
+        {
+            reqwest_middleware::ClientBuilder::new(client).build()
+        }
+        #[cfg(not(feature = "http-tracing"))]
+        {
+            client
+        }
     }
 
     /// Create a builder for full configuration.
@@ -162,7 +190,7 @@ pub struct ProviderBuilder {
     chat_capabilities: HashMap<ChatCapability, CapabilitySupport>,
     embedding_capabilities: HashMap<EmbeddingCapability, CapabilitySupport>,
     provider_name: Option<&'static str>,
-    client: Option<reqwest::Client>,
+    client: Option<HttpClient>,
 }
 
 impl ProviderBuilder {
@@ -276,7 +304,28 @@ impl ProviderBuilder {
     }
 
     /// Set a custom reqwest client.
+    ///
+    /// When the `http-tracing` feature is enabled, the client is wrapped in a
+    /// `reqwest_middleware::ClientWithMiddleware` so provider-level spans can
+    /// be attached. Pass a pre-wrapped client via
+    /// [`client_with_middleware`](Self::client_with_middleware) when you want
+    /// full control over the middleware stack.
     pub fn client(mut self, client: reqwest::Client) -> Self {
+        self.client = Some(Provider::plain_http_client(client));
+        self
+    }
+
+    /// Set a custom `reqwest_middleware::ClientWithMiddleware`.
+    ///
+    /// Use this when you have already built a middleware stack (for
+    /// example, retries plus tracing) and want the provider to send its
+    /// requests through it unchanged. Only available with the
+    /// `http-tracing` feature.
+    #[cfg(feature = "http-tracing")]
+    pub fn client_with_middleware(
+        mut self,
+        client: reqwest_middleware::ClientWithMiddleware,
+    ) -> Self {
         self.client = Some(client);
         self
     }

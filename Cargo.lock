@@ -168,6 +168,8 @@ dependencies = [
  "futures-core",
  "futures-util",
  "reqwest",
+ "reqwest-middleware",
+ "reqwest-tracing",
  "serde",
  "serde_json",
  "tokio",
