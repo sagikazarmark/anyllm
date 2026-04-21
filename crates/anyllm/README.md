@@ -5,8 +5,8 @@
 
 **Provider-agnostic LLM abstractions for Rust.**
 
-`anyllm` is a low-level crate for code that wants one interface for LLM APIs —
-both chat and embeddings — while leaving HTTP transport, request translation,
+`anyllm` is a low-level crate for code that wants one interface for LLM APIs
+(both chat and embeddings) while leaving HTTP transport, request translation,
 and response parsing to provider implementations.
 
 Use it when you want to:
@@ -87,8 +87,8 @@ capabilities: **chat** and **embedding**, both requiring `ProviderIdentity`.
 
 **Shared**
 
-- `ProviderIdentity` — super-trait for both capability traits, carries `provider_name`
-- `CapabilitySupport` — `Supported` / `Unsupported` / `Unknown` for capability queries
+- `ProviderIdentity`: super-trait for both capability traits, carries `provider_name`
+- `CapabilitySupport`: `Supported` / `Unsupported` / `Unknown` for capability queries
 - `Usage`, `RequestOptions`, `ResponseMetadata`, and extension maps leave room for provider-specific behavior
 
 The goal is portability without pretending every provider is identical.

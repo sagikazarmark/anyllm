@@ -12,12 +12,12 @@ Google Gemini provider adapter for `anyllm`.
 
 `anyllm-gemini` currently reports:
 
-- tools
-- streaming
-- vision
-- structured output
-- reasoning blocks
-- parallel tool calls
+- tools, including parallel tool calls
+- streaming (native SSE)
+- vision input and image output, with assistant image replay
+- structured output via `ChatRequest.response_format`
+- reasoning blocks as `ContentBlock::Reasoning`, configurable via `ReasoningConfig`
+- embeddings via `batchEmbedContents`
 
 ## Quick start
 

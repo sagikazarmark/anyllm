@@ -58,3 +58,12 @@ Without this crate, every OpenAI-style provider adapter would need to duplicate:
 
 `anyllm-openai-compat` keeps those concerns shared while still allowing a thin
 provider-specific layer to own branding, extra wire fields, and metadata hooks.
+
+## Features
+
+- `extract` (default): forwards `anyllm/extract`, enabling structured-output
+  extraction via `anyllm::ExtractExt`.
+- `http-tracing`: wraps the internal HTTP client with
+  `reqwest-middleware` + `reqwest-tracing` so provider-level spans fire on
+  outgoing requests. `ProviderBuilder::client_with_middleware(...)` becomes
+  available for callers that want to hand in a pre-built middleware stack.

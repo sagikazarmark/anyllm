@@ -35,6 +35,16 @@ At minimum, a provider should have conformance tests covering:
 Provider crates such as OpenAI, Anthropic, and Gemini should follow a
 recognizable conformance shape.
 
+## Shared behavioral contracts
+
+The [`contract`](src/contract.rs) module ships provider-agnostic assertion
+helpers that each take any `ChatProvider` plus a pre-built `ChatRequest` and
+verify the portable contract: finish reasons, tool-call JSON validity, stream
+reconstruction, and the `is_retryable` / `is_transient` classification on
+error paths. Provider crates wire a `TestHttpServer` with their provider-
+specific wire fixtures and call the shared helpers so the same behavioral
+bar is enforced across the provider matrix.
+
 ## Complementary transport tests
 
 Conformance fixtures prove request shaping, normalization, and streaming logic in
