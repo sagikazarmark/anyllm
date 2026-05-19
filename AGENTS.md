@@ -55,3 +55,17 @@ let request = ChatRequest::new("demo-model")
 ```
 
 - Keep the common path this direct. Add provider-specific power through typed options or extensions, not by making the portable API provider-shaped.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `sagikazarmark/anyllm`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The repo uses the default five-label triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a single-context domain-doc layout. See `docs/agents/domain.md`.
