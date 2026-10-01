@@ -16,7 +16,8 @@ pub enum EmbeddingCapability {
     OutputDimensions,
 }
 
-/// Core trait for providers that expose a text embedding API.
+/// Core trait for providers that execute text embedding requests, whether
+/// through a hosted API, a gateway, or an in-process inference runtime.
 ///
 /// Implementations are batch-oriented. Callers that have a single input
 /// should use [`EmbeddingProviderExt::embed_text`].

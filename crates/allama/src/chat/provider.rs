@@ -9,7 +9,8 @@ use crate::{
     CapabilitySupport, ChatRequest, ChatResponse, ChatStream, ProviderIdentity, Result, StreamEvent,
 };
 
-/// Core trait for LLM chat completion providers.
+/// Core trait for providers that execute chat requests, whether through a
+/// hosted API, a gateway, or an in-process inference runtime.
 ///
 /// Implementors must provide [`chat`](ChatProvider::chat) and a concrete
 /// [`Stream`](ChatProvider::Stream) type for [`chat_stream`](ChatProvider::chat_stream).

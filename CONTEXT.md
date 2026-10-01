@@ -14,3 +14,7 @@ _Avoid_: Extraction orchestration
 **Extraction pass**:
 One provider chat dispatch made by an extraction operation. It counts dispatches owned by extraction, not retry or fallback attempts inside provider adapters.
 _Avoid_: LLM call
+
+**Provider**:
+Anything that executes model operations for a requested model: a hosted API, a gateway, or an in-process inference runtime. It is not tied to a vendor or transport, and one provider may serve many models.
+_Avoid_: Vendor, API client
