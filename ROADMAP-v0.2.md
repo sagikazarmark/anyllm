@@ -1,4 +1,4 @@
-# anyllm v0.2 Roadmap
+# allama v0.2 Roadmap
 
 Synthesized from an audit of the public surface, provider crates, and examples.
 Short version: the core is in good shape — most v0.2 energy is better spent on
@@ -11,17 +11,17 @@ Ordered high → low value. All are candidates, not musts.
 ### 1. Rethink the `prelude` + re-export surface — **high value, low cost**
 
 The root `pub use` list re-exports ~40 types, and `prelude` re-exports ~30.
-That makes `anyllm::` autocomplete noisy and forces everything into one public
+That makes `allama::` autocomplete noisy and forces everything into one public
 namespace, which means future moves break callers. Examples already import both
-`anyllm::ToolCallRef` *and* `anyllm::prelude::*`, which is telling — the
+`allama::ToolCallRef` *and* `allama::prelude::*`, which is telling — the
 prelude doesn't actually cover the types you reach for.
 
 - **Why high value**: this is the last chance to tighten the import surface
   before 1.0. It shapes what users type every day.
 - **Direction**: trim the root `pub use` to top-level primitives; expose
   wrapper types (`RetryingChatProvider`, `FallbackChatProvider`,
-  `TracingChatProvider`) under `anyllm::wrappers`, stream internals under
-  `anyllm::stream`, extraction under `anyllm::extract`. Keep `prelude` focused
+  `TracingChatProvider`) under `allama::wrappers`, stream internals under
+  `allama::stream`, extraction under `allama::extract`. Keep `prelude` focused
   on what an app actually calls (`ChatProvider`, `ChatRequest`,
   `ChatResponse`, `Message`, `Tool`, `StreamExt`). Make specialized types
   explicit.
@@ -30,7 +30,7 @@ prelude doesn't actually cover the types you reach for.
 ### 2. `Tool.parameters: serde_json::Value` is a DX footgun — **high value**
 
 Today tools are hand-authored JSON schemas inline (see
-`crates/anyllm/examples/tool_calling.rs:13-24`). That's error-prone, duplicates
+`crates/allama/examples/tool_calling.rs:13-24`). That's error-prone, duplicates
 argument struct fields, and defeats schema validation at build time.
 `schemars` is already a workspace dep behind the `extract` feature.
 
@@ -89,7 +89,7 @@ Ordered high → low value.
 ### 1. Portable prompt-caching abstraction — **high value**
 
 Anthropic, OpenAI (Responses API), and Gemini all ship server-side prompt
-caching now. Today it lives as `anyllm_anthropic::CacheControl` attached via
+caching now. Today it lives as `allama_anthropic::CacheControl` attached via
 `SystemPrompt::with_option(...)`. That's fine as an escape hatch but forces
 per-provider code in callers.
 

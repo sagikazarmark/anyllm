@@ -1,0 +1,30 @@
+[package]
+name = "allama-cloudflare-worker"
+description = "Cloudflare Workers AI provider for allama using the workers-rs binding"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+allama = { workspace = true }
+futures-util = { workspace = true }
+send_wrapper = "0.6"
+serde = { workspace = true }
+serde_json = { workspace = true }
+worker = "0.8"
+
+[dev-dependencies]
+allama-conformance = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[features]
+default = ["extract"]
+extract = ["allama/extract"]
+
+[package.metadata.docs.rs]
+all-features = true

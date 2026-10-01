@@ -35,19 +35,19 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run provider_chat
-        run: cargo run -p anyllm-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
+        run: cargo run -p allama-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
 
       - name: Run provider_stream
-        run: cargo run -p anyllm-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
+        run: cargo run -p allama-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
 
       - name: Run provider_tools
-        run: cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
+        run: cargo run -p allama-examples --example provider_tools -- "San Francisco"
 
       - name: Run provider_extract
-        run: cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents."
+        run: cargo run -p allama-examples --example provider_extract -- "Summarize why Rust is good for agents."
 
       - name: Run record_replay
-        run: cargo run -p anyllm-examples --example record_replay -- "Summarize this failure briefly."
+        run: cargo run -p allama-examples --example record_replay -- "Summarize this failure briefly."
 
   gemini:
     name: Gemini
@@ -66,22 +66,22 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run provider_chat
-        run: cargo run -p anyllm-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
+        run: cargo run -p allama-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
 
       - name: Run provider_stream
-        run: cargo run -p anyllm-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
+        run: cargo run -p allama-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
 
       - name: Run provider_tools
-        run: cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
+        run: cargo run -p allama-examples --example provider_tools -- "San Francisco"
 
       - name: Run provider_extract
-        run: cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents."
+        run: cargo run -p allama-examples --example provider_extract -- "Summarize why Rust is good for agents."
 
       - name: Run record_replay
-        run: cargo run -p anyllm-examples --example record_replay -- "Summarize this failure briefly."
+        run: cargo run -p allama-examples --example record_replay -- "Summarize this failure briefly."
 
       - name: Run provider_embedding
-        run: cargo run -p anyllm-examples --example provider_embedding -- "Rust makes ownership explicit." "Embedding models turn text into vectors."
+        run: cargo run -p allama-examples --example provider_embedding -- "Rust makes ownership explicit." "Embedding models turn text into vectors."
 
   openai:
     name: OpenAI
@@ -100,19 +100,19 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run provider_chat
-        run: cargo run -p anyllm-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
+        run: cargo run -p allama-examples --example provider_chat -- "Reply with the exact token examples-chat-ok."
 
       - name: Run provider_stream
-        run: cargo run -p anyllm-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
+        run: cargo run -p allama-examples --example provider_stream -- "Reply with the exact token examples-stream-ok."
 
       - name: Run provider_tools
-        run: cargo run -p anyllm-examples --example provider_tools -- "San Francisco"
+        run: cargo run -p allama-examples --example provider_tools -- "San Francisco"
 
       - name: Run provider_extract
-        run: cargo run -p anyllm-examples --example provider_extract -- "Summarize why Rust is good for agents."
+        run: cargo run -p allama-examples --example provider_extract -- "Summarize why Rust is good for agents."
 
       - name: Run record_replay
-        run: cargo run -p anyllm-examples --example record_replay -- "Summarize this failure briefly."
+        run: cargo run -p allama-examples --example record_replay -- "Summarize this failure briefly."
 
       - name: Run provider_embedding
-        run: cargo run -p anyllm-examples --example provider_embedding -- "Rust makes ownership explicit." "Embedding models turn text into vectors."
+        run: cargo run -p allama-examples --example provider_embedding -- "Rust makes ownership explicit." "Embedding models turn text into vectors."

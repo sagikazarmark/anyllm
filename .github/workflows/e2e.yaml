@@ -35,7 +35,7 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run e2e tests
-        run: cargo test -p anyllm-anthropic --test e2e -- --ignored --nocapture
+        run: cargo test -p allama-anthropic --test e2e -- --ignored --nocapture
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -53,7 +53,7 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run e2e tests
-        run: cargo test -p anyllm-gemini --test e2e -- --ignored --nocapture
+        run: cargo test -p allama-gemini --test e2e -- --ignored --nocapture
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
@@ -71,7 +71,7 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run e2e tests
-        run: cargo test -p anyllm-openai --test e2e -- --ignored --nocapture
+        run: cargo test -p allama-openai --test e2e -- --ignored --nocapture
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
@@ -92,7 +92,7 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run e2e tests
-        run: cargo test -p anyllm-openai-compat --test e2e_cloudflare -- --ignored --nocapture
+        run: cargo test -p allama-openai-compat --test e2e_cloudflare -- --ignored --nocapture
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -116,7 +116,7 @@ jobs:
         uses: ./.github/actions/rust/
 
       - name: Run e2e tests
-        run: cargo test -p anyllm-openai-compat --test e2e -- --ignored --nocapture
+        run: cargo test -p allama-openai-compat --test e2e -- --ignored --nocapture
         env:
           OPENAI_COMPAT_BASE_URL: https://models.github.ai/inference
           OPENAI_COMPAT_API_KEY: ${{ github.token }}

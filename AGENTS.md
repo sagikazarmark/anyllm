@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Build `anyllm` as a low-level, universal client for LLM applications.
+- Build `allama` as a low-level, universal client for LLM applications.
 - Keep it a building block. Do not add agent loops or turn the library into an agent framework.
 - Scope may grow to adjacent model operations such as embeddings, transcription, and speech, but keep the same low-level, provider-agnostic design.
 - Do not force adjacent capabilities into chat-shaped APIs just to preserve a single uniform surface.

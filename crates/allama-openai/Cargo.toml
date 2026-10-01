@@ -1,0 +1,42 @@
+[package]
+name = "allama-openai"
+description = "OpenAI provider for allama"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+allama = { workspace = true }
+allama-openai-compat = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+reqwest-middleware = { workspace = true, optional = true }
+reqwest-tracing = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+allama-conformance = { workspace = true }
+criterion = { workspace = true }
+futures-executor = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
+
+[features]
+default = ["extract", "reqwest/default-tls"]
+extract = ["allama/extract"]
+http-tracing = ["dep:reqwest-middleware", "dep:reqwest-tracing"]
+__bench-internals = []
+
+[package.metadata.docs.rs]
+all-features = true
+
+[[bench]]
+name = "streaming"
+harness = false
+required-features = ["__bench-internals"]

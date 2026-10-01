@@ -1,4 +1,4 @@
-# anyllm
+# allama
 
 Provider-agnostic language for low-level LLM operations and their normalized behavior.
 

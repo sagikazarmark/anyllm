@@ -12,6 +12,143 @@ dependencies = [
 ]
 
 [[package]]
+name = "allama"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "erased-serde",
+ "futures-core",
+ "futures-timer",
+ "futures-util",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "allama-anthropic"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "allama-conformance",
+ "criterion",
+ "eventsource-stream",
+ "futures-core",
+ "futures-executor",
+ "futures-util",
+ "reqwest",
+ "reqwest-middleware",
+ "reqwest-tracing",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "allama-cloudflare-worker"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "allama-conformance",
+ "futures-util",
+ "send_wrapper",
+ "serde",
+ "serde_json",
+ "tokio",
+ "worker",
+]
+
+[[package]]
+name = "allama-conformance"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "axum",
+ "futures-core",
+ "futures-util",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "allama-examples"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "allama-anthropic",
+ "allama-gemini",
+ "allama-openai",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "allama-gemini"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "allama-conformance",
+ "criterion",
+ "eventsource-stream",
+ "futures-core",
+ "futures-executor",
+ "futures-util",
+ "reqwest",
+ "reqwest-middleware",
+ "reqwest-tracing",
+ "serde",
+ "serde_json",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "allama-openai"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "allama-conformance",
+ "allama-openai-compat",
+ "criterion",
+ "futures-core",
+ "futures-executor",
+ "futures-util",
+ "reqwest",
+ "reqwest-middleware",
+ "reqwest-tracing",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "allama-openai-compat"
+version = "0.1.0"
+dependencies = [
+ "allama",
+ "allama-conformance",
+ "criterion",
+ "eventsource-stream",
+ "futures-core",
+ "futures-util",
+ "reqwest",
+ "reqwest-middleware",
+ "reqwest-tracing",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "alloca"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -37,143 +174,6 @@ name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
-
-[[package]]
-name = "anyllm"
-version = "0.1.1"
-dependencies = [
- "criterion",
- "erased-serde",
- "futures-core",
- "futures-timer",
- "futures-util",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "anyllm-anthropic"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "anyllm-conformance",
- "criterion",
- "eventsource-stream",
- "futures-core",
- "futures-executor",
- "futures-util",
- "reqwest",
- "reqwest-middleware",
- "reqwest-tracing",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "anyllm-cloudflare-worker"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "anyllm-conformance",
- "futures-util",
- "send_wrapper",
- "serde",
- "serde_json",
- "tokio",
- "worker",
-]
-
-[[package]]
-name = "anyllm-conformance"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "axum",
- "futures-core",
- "futures-util",
- "schemars",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "anyllm-examples"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "anyllm-anthropic",
- "anyllm-gemini",
- "anyllm-openai",
- "reqwest",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "anyllm-gemini"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "anyllm-conformance",
- "criterion",
- "eventsource-stream",
- "futures-core",
- "futures-executor",
- "futures-util",
- "reqwest",
- "reqwest-middleware",
- "reqwest-tracing",
- "serde",
- "serde_json",
- "tokio",
- "uuid",
-]
-
-[[package]]
-name = "anyllm-openai"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "anyllm-conformance",
- "anyllm-openai-compat",
- "criterion",
- "futures-core",
- "futures-executor",
- "futures-util",
- "reqwest",
- "reqwest-middleware",
- "reqwest-tracing",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "anyllm-openai-compat"
-version = "0.1.1"
-dependencies = [
- "anyllm",
- "anyllm-conformance",
- "criterion",
- "eventsource-stream",
- "futures-core",
- "futures-util",
- "reqwest",
- "reqwest-middleware",
- "reqwest-tracing",
- "serde",
- "serde_json",
- "tokio",
-]
 
 [[package]]
 name = "async-trait"

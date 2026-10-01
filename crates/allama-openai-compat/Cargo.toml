@@ -1,0 +1,39 @@
+[package]
+name = "allama-openai-compat"
+description = "Reusable OpenAI-compatible transport and normalization toolkit for allama providers"
+version = { workspace = true }
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+keywords = { workspace = true }
+categories = { workspace = true }
+
+[dependencies]
+allama = { workspace = true }
+eventsource-stream = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+reqwest-middleware = { workspace = true, optional = true }
+reqwest-tracing = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+allama-conformance = { workspace = true }
+criterion = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }
+
+[features]
+default = ["reqwest/default-tls"]
+extract = ["allama/extract"]
+http-tracing = ["dep:reqwest-middleware", "dep:reqwest-tracing"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[[bench]]
+name = "normalization"
+harness = false

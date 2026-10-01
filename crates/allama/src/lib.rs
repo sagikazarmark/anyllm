@@ -1,0 +1,189 @@
+#![warn(missing_docs)]
+//! Provider-agnostic chat and embedding primitives and adapters.
+//!
+//! The crate root exposes the common day-to-day API surface directly:
+//! [`ChatProvider`], [`ChatRequest`], [`ChatResponse`], [`Tool`],
+//! [`EmbeddingProvider`], [`EmbeddingRequest`], [`EmbeddingResponse`], and
+//! related streaming and wrapper types.
+//!
+//! Use [`prelude`] when you want a compact import for typical application code.
+//! Reach for explicit root imports when writing libraries or examples that need
+//! to make advanced types like [`ChatRequestRecord`], [`ChatResponseRecord`],
+//! [`CollectedResponse`], or [`StreamCompleteness`] obvious at the callsite.
+//!
+//! ## Capabilities
+//!
+//! `allama` models each LLM capability as a sibling trait on top of a shared
+//! [`ProviderIdentity`] super-trait:
+//!
+//! - [`ChatProvider`]: one-shot and streaming chat completion.
+//! - [`EmbeddingProvider`]: batch-oriented text embedding.
+//!
+//! Providers implement whichever capabilities they support. A provider that
+//! only exposes chat only implements `ChatProvider`; one that exposes both
+//! implements both. Capability support queries share the [`CapabilitySupport`]
+//! enum across both traits.
+//!
+//! ## Portability Model
+//!
+//! `allama` aims to keep the common request/response path provider-agnostic,
+//! while still leaving explicit escape hatches for provider-specific features.
+//!
+//! The portable chat core is centered on [`ChatRequest`], [`ChatResponse`],
+//! [`Message`], [`ContentBlock`], [`Tool`], and the streaming event model.
+//! The portable embedding core is centered on [`EmbeddingRequest`],
+//! [`EmbeddingResponse`], and [`EmbeddingCapability`], intentionally narrower
+//! because the provider overlap on embedding features is narrower.
+//!
+//! These types intentionally expose their portable fields directly and pair
+//! them with fluent constructors/helpers so application and test code can build
+//! and adjust requests and responses without going through opaque builders.
+//!
+//! Provider-specific data lives in a few deliberate places:
+//! [`RequestOptions`] and [`ResponseMetadata`] for typed extensions,
+//! [`ExtraMap`] and `extensions` fields for portable JSON-shaped extras, and
+//! `Other` enum variants for provider payloads that do not fit the normalized
+//! model yet.
+//!
+//! This means portability is best-effort rather than absolute. Converting to
+//! [`ChatRequestRecord`] or [`ChatResponseRecord`] preserves the portable core,
+//! but typed provider-specific data may be dropped or flattened to JSON.
+//!
+//! ## Wrappers
+//!
+//! Four wrappers implement [`ChatProvider`] on top of another
+//! [`ChatProvider`] and compose arbitrarily.
+//!
+//! | Want | Reach for |
+//! |------|-----------|
+//! | Retry the same provider on transient errors | [`RetryingChatProvider`] |
+//! | Swap to a different provider on failure | [`FallbackChatProvider`] |
+//! | OpenTelemetry GenAI spans around each call | `TracingChatProvider` (`tracing` feature) |
+//! | Parse responses into typed Rust structs | `ExtractExt::extract` (`extract` feature) |
+//!
+//! The recommended stacking order, outermost first:
+//!
+//! ```rust,ignore
+//! TracingChatProvider::new(
+//!     FallbackChatProvider::new(
+//!         RetryingChatProvider::new(primary),
+//!         RetryingChatProvider::new(fallback),
+//!     ),
+//! )
+//! ```
+//!
+//! Rationale:
+//!
+//! - **Tracing outermost.** Spans cover every downstream decision, so a
+//!   single trace shows the retry attempts and the fallback event.
+//! - **Fallback around retry.** Each backend gets its own retry budget;
+//!   exhausted retries on the primary trigger the fallback, and the
+//!   fallback has its own retry window.
+//! - **Retry innermost.** Transient errors are handled at the provider
+//!   that saw them, before bubbling out to the fallback decision.
+//!
+//! Structured extraction is orthogonal to the stack. `ExtractExt` is
+//! implemented for every wrapper and for [`DynChatProvider`], so
+//! `stacked.extract(&request)` works on any composition without an
+//! explicit `ExtractingProvider`. Reach for `ExtractingProvider` only
+//! when you want `chat()` itself to return the extraction-aware response
+//! shape rather than calling `extract` at the call site.
+
+mod capability;
+mod chat;
+mod embedding;
+mod error;
+mod identity;
+mod options;
+mod usage;
+mod utils;
+
+pub use capability::CapabilitySupport;
+pub use chat::{
+    AssistantMessageRef, ChatCapability, ChatCapabilityResolver, ChatProvider, ChatProviderExt,
+    ChatRequest, ChatRequestRecord, ChatResponse, ChatResponseRecord, ChatStream, ChatStreamExt,
+    CollectedResponse, ContentBlock, ContentPart, DynChatProvider, FallbackChatProvider,
+    FinishReason, ImageBlockRef, ImagePartRef, ImageSource, Message, OwnedToolCall,
+    ReasoningConfig, ReasoningEffort, ResponseFormat, RetryPolicy, RetryingChatProvider,
+    SingleResponseStream, StreamBlockType, StreamCollector, StreamCompleteness, StreamEvent,
+    SystemOptions, SystemPrompt, Tool, ToolCallRef, ToolChoice, ToolMessageRef, ToolResultContent,
+    UsageMetadataMode, UserContent, UserMessageRef,
+};
+#[cfg(any(test, feature = "mock"))]
+pub use chat::{
+    ChatResponseBuilder, MockProvider, MockProviderBuilder, MockResponse, MockStreamEvent,
+    MockStreamingProvider, MockStreamingProviderBuilder, MockToolRoundTrip,
+};
+#[cfg(feature = "extract")]
+pub use chat::{
+    ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata, ExtractionMode,
+    ExtractionRequest, Extractor,
+};
+#[cfg(feature = "tracing")]
+pub use chat::{TracingChatProvider, TracingContentConfig, otel_genai_provider_name};
+#[cfg(any(test, feature = "mock"))]
+pub use embedding::MockEmbeddingProvider;
+pub use embedding::{
+    DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
+    EmbeddingRequest, EmbeddingResponse,
+};
+pub use error::{Error, ErrorLog, Result, SerializationError};
+pub use identity::ProviderIdentity;
+pub use options::{RequestOptions, ResponseMetadata, ResponseMetadataType};
+pub use usage::Usage;
+
+/// Portable JSON object used wherever allama needs an untyped, wire-shaped
+/// key/value bag.
+///
+/// `ExtraMap` is the library's JSON-native escape hatch. It appears as the
+/// `data` field of [`ContentBlock::Other`], the `extensions` field on
+/// messages and tools, the `metadata` and `data` fields on stream events,
+/// and the portable half of [`ResponseMetadata`]. Aliasing to
+/// `serde_json::Map<String, serde_json::Value>` (rather than `Value`) makes
+/// the "this is a key/value bag" constraint compile-time: a scalar or array
+/// will not fit.
+///
+/// For Rust-native typed configuration, use [`RequestOptions`] on the request
+/// side or [`ResponseMetadataType`] entries on the response side. Reach for
+/// `ExtraMap` only when the data is inherently JSON-shaped or when preserving
+/// a wire-level blob verbatim.
+pub type ExtraMap = serde_json::Map<String, serde_json::Value>;
+
+/// Prelude module. Import `use allama::prelude::*` for common application-facing types.
+///
+/// The prelude intentionally omits specialized types so they remain explicit at
+/// the callsite: record snapshots ([`ChatRequestRecord`], [`ChatResponseRecord`]),
+/// stream diagnostics ([`CollectedResponse`], [`StreamCompleteness`]),
+/// provider-authoring hooks ([`ProviderIdentity`], [`ChatCapabilityResolver`]),
+/// the redacted logging view ([`ErrorLog`]), the JSON escape hatch ([`ExtraMap`]),
+/// and variant reference types (e.g. [`ToolCallRef`], [`AssistantMessageRef`]).
+pub mod prelude {
+    pub use futures_util::StreamExt;
+
+    pub use crate::{
+        CapabilitySupport, ChatCapability, ChatProvider, ChatProviderExt, ChatRequest,
+        ChatResponse, ChatStream, ChatStreamExt, ContentBlock, ContentPart, DynChatProvider,
+        DynEmbeddingProvider, EmbeddingCapability, EmbeddingProvider, EmbeddingProviderExt,
+        EmbeddingRequest, EmbeddingResponse, Error, FallbackChatProvider, FinishReason,
+        ImageSource, Message, OwnedToolCall, ReasoningConfig, ReasoningEffort, ResponseFormat,
+        Result, RetryPolicy, RetryingChatProvider, SingleResponseStream, StreamBlockType,
+        StreamCollector, StreamEvent, SystemPrompt, Tool, ToolChoice, ToolResultContent, Usage,
+        UserContent,
+    };
+
+    #[cfg(any(test, feature = "mock"))]
+    pub use crate::{
+        ChatResponseBuilder, MockEmbeddingProvider, MockProvider, MockProviderBuilder,
+        MockResponse, MockStreamEvent, MockStreamingProvider, MockStreamingProviderBuilder,
+        MockToolRoundTrip,
+    };
+
+    #[cfg(feature = "extract")]
+    pub use crate::{
+        ExtractError, ExtractExt, Extracted, ExtractingProvider, ExtractionMetadata,
+        ExtractionMode, ExtractionRequest, Extractor,
+    };
+
+    #[cfg(feature = "tracing")]
+    pub use crate::{TracingChatProvider, TracingContentConfig};
+}

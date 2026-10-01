@@ -1,0 +1,59 @@
+# allama-gemini
+
+Google Gemini provider adapter for `allama`.
+
+## Use it when
+
+- you want Gemini models behind the shared `allama::ChatProvider` trait
+- you want reasoning blocks and Gemini-native parallel tool calls normalized into the common contract
+- you want structured outputs plus cross-provider request/response types
+
+## Capabilities
+
+`allama-gemini` currently reports:
+
+- tools, including parallel tool calls
+- streaming (native SSE)
+- vision input and image output, with assistant image replay
+- structured output via `ChatRequest.response_format`
+- reasoning blocks as `ContentBlock::Reasoning`, configurable via `ReasoningConfig`
+- embeddings via `batchEmbedContents`
+
+## Quick start
+
+```toml
+[dependencies]
+allama = "0.1.0"
+allama-gemini = "0.1.0"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+```rust
+use allama::prelude::*;
+use allama_gemini::Provider;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let provider = Provider::from_env()?;
+
+    let response = provider
+        .chat(&ChatRequest::new("gemini-2.5-pro")
+            .user("Explain tool calling in two sentences."))
+        .await?;
+
+    println!("{}", response.text_or_empty());
+    Ok(())
+}
+```
+
+Environment variables:
+
+- required: `GEMINI_API_KEY`
+- optional: `GEMINI_BASE_URL`
+
+## Notes
+
+- Prefer portable `ChatRequest.response_format(...)` over
+  `ChatRequestOptions.response_mime_type`; the latter is an escape hatch for
+  advanced Gemini-only cases.
+- Gemini-specific request knobs live in typed `ChatRequestOptions`.
