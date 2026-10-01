@@ -32,5 +32,6 @@ tokio = "1"
 [workspace.metadata.release]
 sign-commit = true
 sign-tag = true
+shared-version = true
 tag-message = "Release {{version}}"
-tag-prefix = ""
+tag-name = "v{{version}}"
